@@ -148,6 +148,37 @@ function map_w_params(f, mcm::MCSamplesMulti, params; mapfunc=map)
 	)
 end
 
+function map_w_params(f, mcs::MCSamples; mapfunc=map)
+	mc_tmp = mapsamples(mcs; mapfunc) do sample
+		f(sample, (;))
+	end
+	axks = named_axiskeys(realval(mc_tmp))
+	@assert all(A -> named_axiskeys(A) == axks, randomvals(mc_tmp))
+	MCSamplesMulti(map(grid(;axks...)) do pars
+		mapsamples(mc_tmp) do ss
+			ss(;pars...)
+		end
+	end)
+end
+
+function map_w_params(f, mcm::MCSamplesMulti; mapfunc=map)
+	prev_grid = grid(; named_axiskeys(mcm.arr)...)
+	return MCSamplesMulti(
+		map(prev_grid, mcm.arr) do prev_pars, mc
+			mc_tmp = mapsamples(mc; mapfunc) do sample
+				f(sample, prev_pars)
+			end
+			axks = named_axiskeys(realval(mc_tmp))
+			@assert all(A -> named_axiskeys(A) == axks, randomvals(mc_tmp))
+			map(grid(;axks...)) do pars
+				mapsamples(mc_tmp) do ss
+					ss(;pars...)
+				end
+			end
+		end |> stack
+	)
+end
+
 """    swap_realval(mc, randix::Int)
 
 Swap the real value and the random realization at index `randix`.
