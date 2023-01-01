@@ -1,12 +1,11 @@
 name = "MonteCarloTesting"
 uuid = "b75b2f39-c526-438a-aeb3-f18deacfdc57"
 authors = ["Alexander Plavin <alexander@plav.in>"]
-version = "0.1.5"
+version = "0.1.6"
 
 [deps]
 AxisKeys = "94b1ba4f-4ee9-5380-92f1-94cde586c3c5"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
-EllipsisNotation = "da5c29d0-fa7d-589e-88eb-ea29b0a81949"
 InteractiveUtils = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
 LazyStack = "1fad7336-0346-5a1a-a56f-a06ba010965b"
 Markdown = "d6f4376e-aef5-505a-96c1-9c027394607a"
@@ -20,7 +19,6 @@ StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 [compat]
 AxisKeys = "0.1.24, 0.2"
 Distributions = "0.23, 0.24, 0.25"
-EllipsisNotation = "1.1"
 LazyStack = "0.0.7"
 Parameters = "0.12.3"
 RectiGrids = "0.1.5"
