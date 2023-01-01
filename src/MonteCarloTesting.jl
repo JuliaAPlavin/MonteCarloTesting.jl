@@ -52,7 +52,7 @@ function montecarlo(; real, random=nothing, randomfunc=nothing, nrandom=nothing,
 	if !isnothing(random)
 		MCSamples(; real, random)
 	else
-		rngs = map(seed -> Random.seed!(copy(rng), seed), 1:nrandom)
+		rngs = map(seed -> Random.seed!(copy(rng), seed), rand(rng, UInt, nrandom))
 		MCSamples(; real, random=mapview(rng -> randomfunc(copy(rng)), rngs))
 	end
 end

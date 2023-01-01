@@ -46,7 +46,7 @@ end
     )
     @test collect(randomvals(mc1)) == collect(randomvals(mc1))  # repeatable
     @test allunique(randomvals(mc1))
-    @test sum(randomvals(mc1)) ≈ 501.01  rtol=1e-4
+    @test sum(randomvals(mc1)) ≈ 489.158  rtol=1e-4
 
     mc2 = montecarlo(
         real=0.,
@@ -55,8 +55,16 @@ end
         # don't pass rng
     )
     @test collect(randomvals(mc2)) == collect(randomvals(mc2))  # repeatable
-    @test allunique(randomvals(mc1))
+    @test allunique(randomvals(mc2))
     @test sum(randomvals(mc2)) != sum(randomvals(mc1))
+
+    mc3 = montecarlo(
+        real=0.,
+        randomfunc=rng -> rand(rng),
+        nrandom=1000,
+        # don't pass rng
+    )
+    @test sum(randomvals(mc3)) != sum(randomvals(mc2))
 end
 
 @testset "common usage" begin
@@ -78,7 +86,7 @@ end
     @test pvalue(mc2, alt= <=) ≈ 0.961039  rtol=1e-4
     @test pvalue(mc2, alt= >=) + pvalue(mc2, alt= <=) > 1
     @test pvalue(mc2, alt= >=) == pvalue(mc2, Fraction, alt= >=)
-    @test pvalue(swap_realval(mc2, 4), alt= >=) ≈ 0.636363  rtol=1e-4
+    @test pvalue(swap_realval(mc2, 4), alt= >=) ≈ 0.513486  rtol=1e-4
     @test pvalue(swap_realval(mc2, 4), alt= >=) == randomvals(pvalues_all(mc2; alt= >=))[4]
 
     mc3 = map_w_params(mc1, grid(n=10:100)) do xs, ps
@@ -86,8 +94,8 @@ end
     end
     @test realval.(mc3)(n=10) ≈ 0.504545  rtol=1e-4
     @test realval.(mc3)(n=95) ≈ 0.547474  rtol=1e-4
-    @test pvalue.(mc3, alt= >=)(n=10) ≈ 0.481518  rtol=1e-4
-    @test pvalue.(mc3, alt= >=)(n=95) ≈ 0.055944  rtol=1e-4
+    @test pvalue.(mc3, alt= >=)(n=10) ≈ 0.456543  rtol=1e-4
+    @test pvalue.(mc3, alt= >=)(n=95) ≈ 0.048951  rtol=1e-4
 
     mc4 = mapsamples(x -> x^2, mc3)
     @test realval.(mc4)(n=10) ≈ 0.504545^2  rtol=1e-4
@@ -99,9 +107,9 @@ end
     end
     @test nrandom(mc5) == 1000
     @test pvalue_wtrials(mc5; alt= >=).pretrial ≈ 0.039960  rtol=1e-4
-    @test pvalue_wtrials(mc5; alt= >=).posttrial ≈ 0.200799  rtol=1e-4
+    @test pvalue_wtrials(mc5; alt= >=).posttrial ≈ 0.206793  rtol=1e-4
     @test pvalue_wtrials(mc5(n= >=(90)); alt= >=).pretrial ≈ 0.039960  rtol=1e-4
-    @test pvalue_wtrials(mc5(n= >=(90)); alt= >=).posttrial ≈ 0.058941  rtol=1e-4
+    @test pvalue_wtrials(mc5(n= >=(90)); alt= >=).posttrial ≈ 0.060939  rtol=1e-4
 end
 
 @testset "different pvalues" begin
