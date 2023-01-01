@@ -52,6 +52,12 @@ function montecarlo(; real, random=nothing, randomfunc=nothing, nrandom=nothing,
 	if !isnothing(random)
 		MCSamples(; real, random)
 	else
+		let crng = copy(rng)
+			ccrng = copy(crng)
+			@assert ccrng == crng
+			randomfunc(ccrng)
+			@assert ccrng != crng  "Provided `randomfunc(rng)` doesn't use its `rng` argument. This can't be right!"
+		end
 		rngs = map(seed -> Random.seed!(copy(rng), seed), rand(rng, UInt, nrandom))
 		MCSamples(; real, random=mapview(rng -> randomfunc(copy(rng)), rngs))
 	end
@@ -193,6 +199,7 @@ function pvalues_all(mc::MCSamples, mode::Type{Fraction}=Fraction; alt)
 	pvals = nps ./ length(ranks)
 	return MCSamples(real=pvals[1], random=pvals[2:end])
 end
+
 """    pvalue_wtrials(mc::MCSamplesMulti; alt)
 
 Compute so-called _pre-trial_ and _post-trial_ p-values.
