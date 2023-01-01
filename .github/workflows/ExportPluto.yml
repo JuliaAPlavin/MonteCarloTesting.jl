@@ -4,6 +4,9 @@ on:
         branches:
             - main
             - master
+        paths:
+          - 'test/examples.jl'
+          - '.github/workflows/ExportPluto.yml'
     workflow_dispatch:
 
 env:
