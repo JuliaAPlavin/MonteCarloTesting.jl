@@ -34,7 +34,7 @@ using Test
     @test realval.(mc2) == [-1, 0, 1, 2]
     @test realval.(mc2)(a=1) == 1
     @test realval.(mc2(a=0:2)) == [0, 1, 2]
-    @test_broken realval(mc2(a=1)) == 1
+    @test realval(mc2(a=1)) == 1
 end
 
 @testset "randomization" begin
@@ -99,6 +99,8 @@ end
     @test realval.(mc3)(n=95) ≈ 0.547474  rtol=1e-4
     @test pvalue.(mc3, alt= >=)(n=10) ≈ 0.456543  rtol=1e-4
     @test pvalue.(mc3, alt= >=)(n=95) ≈ 0.048951  rtol=1e-4
+    @test realval(mc3(n=10)) == realval.(mc3)(n=10)
+    @test mc3(n=10:20)[1] == mc3(n=10)
 
     mc4 = mapsamples(x -> x^2, mc3)
     @test realval.(mc4)(n=10) ≈ 0.504545^2  rtol=1e-4
