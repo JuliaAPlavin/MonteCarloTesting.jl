@@ -279,11 +279,12 @@ function pvalues_all(mcm::MCSamplesMulti, mode=Fraction; alt)
     end)
 end
 
-"""    pvalue_post(mc::MCSamplesMulti; alt)
+"""    pvalue_post(mc::MCSamplesMulti; alt, combine=minimum)
 
 Compute the so-called _post-trial_ p-value. That's an estimate of the probability to obtain the pre-trial p-value as low as it is in random realizations.
 
 `alt`: specification of the alternative hypothesis, passed as-is to `pvalue()`.
+`combine`: experimental.
 """
 function pvalue_post(mcm::MCSamplesMulti; alt, combine=minimum)
     # pvalue for each realization and parameter value:
