@@ -1,5 +1,117 @@
 using MonteCarloTesting
+using Statistics: mean
+using StableRNGs
+using RectiGrids
+using AxisKeys
+using Distributions: Poisson
 using Test
+
+@testset "basic hardcoded" begin
+    mc = montecarlo(real=0, random=[-1, 0, 0, 0, 0, 0, 0, 1, 1])
+    @test sampletype(mc) == Int
+    @test realval(mc) == 0
+    @test nrandom(mc) == 9
+    @test randomvals(mc) == [-1, 0, 0, 0, 0, 0, 0, 1, 1]
+    @test realrandomvals(mc) == [0, -1, 0, 0, 0, 0, 0, 0, 1, 1]
+
+    @test realval(swap_realval(mc, 1)) == -1
+    @test randomvals(swap_realval(mc, 1)) == [0, 0, 0, 0, 0, 0, 0, 1, 1]
+
+    @test pvalue(mc; alt= >=) == 0.9
+    @test pvalue(mc; alt= <=) == 0.8
+    @test realval(pvalues_all(mc; alt= >=)) == 0.9
+    @test realval(pvalues_all(mc; alt= <=)) == 0.8
+    @test randomvals(pvalues_all(mc; alt= >=)) == [1.0, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.2, 0.2]
+
+    mc1 = mapsamples(x -> x + 1, mc)
+    @test realrandomvals(mc1) == [1, 0, 1, 1, 1, 1, 1, 1, 2, 2]
+    @test pvalues_all(mc1; alt= >=) == pvalues_all(mc; alt= >=)
+
+    mc2 = map_w_params(mc, grid(a=-1:2)) do x, p
+        x + p.a
+    end
+    @test sampletype(mc2) == Int
+    @test realval.(mc2) == [-1, 0, 1, 2]
+    @test realval.(mc2)(a=1) == 1
+    @test realval.(mc2(a=0:2)) == [0, 1, 2]
+    @test_broken realval(mc2(a=1)) == 1
+end
+
+@testset "randomization" begin
+    mc1 = montecarlo(
+        real=0.,
+        randomfunc=rng -> rand(rng),
+        nrandom=1000,
+        rng=StableRNG(123),
+    )
+    @test collect(randomvals(mc1)) == collect(randomvals(mc1))  # repeatable
+    @test allunique(randomvals(mc1))
+    @test sum(randomvals(mc1)) ≈ 501.01  rtol=1e-4
+
+    mc2 = montecarlo(
+        real=0.,
+        randomfunc=rng -> rand(rng),
+        nrandom=1000,
+        # don't pass rng
+    )
+    @test collect(randomvals(mc2)) == collect(randomvals(mc2))  # repeatable
+    @test allunique(randomvals(mc1))
+    @test sum(randomvals(mc2)) != sum(randomvals(mc1))
+end
+
+@testset "common usage" begin
+    mc1 = montecarlo(
+        real=range(0.5, 0.6, length=100) |> collect,
+        randomfunc=rng -> rand(rng, 100),
+        nrandom=1000,
+        rng=StableRNG(123),
+    )
+    @test sampletype(mc1) == Vector{Float64}
+    @test nrandom(mc1) == 1000
+    @test collect(randomvals(mc1)) == collect(randomvals(mc1))  # repeatable
+
+    mc2 = mapsamples(mc1) do xs
+        mean(xs)
+    end
+
+    @test pvalue(mc2, alt= >=) ≈ 0.039960  rtol=1e-4
+    @test pvalue(mc2, alt= <=) ≈ 0.961039  rtol=1e-4
+    @test pvalue(mc2, alt= >=) + pvalue(mc2, alt= <=) > 1
+    @test pvalue(mc2, alt= >=) == pvalue(mc2, Fraction, alt= >=)
+    @test pvalue(swap_realval(mc2, 4), alt= >=) ≈ 0.636363  rtol=1e-4
+    @test pvalue(swap_realval(mc2, 4), alt= >=) == randomvals(pvalues_all(mc2; alt= >=))[4]
+
+    mc3 = map_w_params(mc1, grid(n=10:100)) do xs, ps
+        mean(xs[1:ps.n])
+    end
+    @test realval.(mc3)(n=10) ≈ 0.504545  rtol=1e-4
+    @test realval.(mc3)(n=95) ≈ 0.547474  rtol=1e-4
+    @test pvalue.(mc3, alt= >=)(n=10) ≈ 0.481518  rtol=1e-4
+    @test pvalue.(mc3, alt= >=)(n=95) ≈ 0.055944  rtol=1e-4
+
+    mc4 = mapsamples(x -> x^2, mc3)
+    @test realval.(mc4)(n=10) ≈ 0.504545^2  rtol=1e-4
+    @test pvalue.(mc4, alt= >=) == pvalue.(mc3, alt= >=)
+
+    mc5 = map_w_params(mc3, grid(p=2:4, mul=0.1:0.1:2)) do x, ps
+        @assert 10 <= ps.n <= 100
+        ps.mul * x^ps.p
+    end
+    @test nrandom(mc5) == 1000
+    @test pvalue_wtrials(mc5; alt= >=).pretrial ≈ 0.039960  rtol=1e-4
+    @test pvalue_wtrials(mc5; alt= >=).posttrial ≈ 0.200799  rtol=1e-4
+    @test pvalue_wtrials(mc5(n= >=(90)); alt= >=).pretrial ≈ 0.039960  rtol=1e-4
+    @test pvalue_wtrials(mc5(n= >=(90)); alt= >=).posttrial ≈ 0.058941  rtol=1e-4
+end
+
+@testset "different pvalues" begin
+    mcp = montecarlo(real=10, random=rand(StableRNG(123), Poisson(4), 1000))
+    @test pvalue(mcp, alt= >=) ≈ 0.008991  rtol=1e-4
+    @test pvalue(mcp, alt= <=) ≈ 0.997002  rtol=1e-4
+    @test pvalue(mcp, Poisson, alt= >=) ≈ 0.00874459  rtol=1e-4
+    @test pvalue(mcp, Poisson, alt= <=) ≈ 0.996913  rtol=1e-4
+end
+
 
 import Aqua
 import CompatHelperLocal as CHL
@@ -10,75 +122,3 @@ import CompatHelperLocal as CHL
     Aqua.test_undefined_exports(MonteCarloTesting)
     Aqua.test_stale_deps(MonteCarloTesting)
 end
-
-# @testset begin
-#     @test_throws MethodError MonteCarloSamples(real=0, random=1:5)
-# 	mcits = MonteCarloSamples(real=fill(0), random=1:5)
-#     @test mcits.real == fill(0)
-#     @test mcits.random == 1:5
-#     @test nsamples(mcits) == 5
-#     @test nparams(mcits) == 1
-#     samples = map(it -> it, first(mcits, 5))
-#     @test samples == mcits
-#     @test nsamples(first(mcits, 3)) == 3
-#     @test nparams(first(mcits, 3)) == 1
-
-#     @test nsamples(filter_params(p -> true, mcits)) == 5
-#     @test nparams(filter_params(p -> true, mcits)) == 1
-
-#     samples_par1 = map_w_params(mcits, [(;a) for a in 1:3]) do it, params
-#         (; it, params...)
-#     end
-#     @test nsamples(samples_par1) == 5
-#     @test nparams(samples_par1) == 3
-#     @test samples_par1.params == [(a=1,), (a=2,), (a=3,)]
-#     @test samples_par1.real == [(it=0, a=1), (it=0, a=2), (it=0, a=3)]
-#     @test samples_par1.random == [(it=1, a=1) (it=2, a=1) (it=3, a=1) (it=4, a=1) (it=5, a=1); (it=1, a=2) (it=2, a=2) (it=3, a=2) (it=4, a=2) (it=5, a=2); (it=1, a=3) (it=2, a=3) (it=3, a=3) (it=4, a=3) (it=5, a=3)]
-
-#     samples_par2 = map_w_params(mcits, [(;b, a) for b in [:x, :y], a in 1:3]) do it, params
-#         (; it, params...)
-#     end
-#     @test nsamples(samples_par2) == 5
-#     @test nparams(samples_par2) == 6
-#     @test samples_par2.params == [(b = :x, a = 1) (b = :x, a = 2) (b = :x, a = 3); (b = :y, a = 1) (b = :y, a = 2) (b = :y, a = 3)]
-#     @test samples_par2.real == [(it = 0, b = :x, a = 1) (it = 0, b = :x, a = 2) (it = 0, b = :x, a = 3); (it = 0, b = :y, a = 1) (it = 0, b = :y, a = 2) (it = 0, b = :y, a = 3)]
-#     @test size(samples_par2.random) == (2, 3, 5)
-
-#     @test nsamples(first(samples_par2, 3)) == 3
-#     @test nparams(first(samples_par2, 3)) == 6
-#     @test size(first(samples_par2, 3).random) == (2, 3, 3)
-
-#     @test nsamples(filter_params(samples_par2; a=(==)(1))) == 5
-#     @test nparams(filter_params(samples_par2; a=(==)(1))) == 2
-#     @test filter_params(p -> p.a == 1, samples_par2) == filter_params(samples_par2; a=(==)(1))
-
-#     samples_par3 = map_w_params(samples_par1, [(; b) for b in [:x, :y]]) do it, params
-#         (; it.it, params.b, it.a)
-#     end
-#     @test nsamples(samples_par3) == 5
-#     @test nparams(samples_par3) == 6
-#     @test samples_par3.params == samples_par2.params
-#     @test samples_par3.real == samples_par2.real
-#     @test samples_par3.random == samples_par2.random
-
-#     samples_par4 = map_w_batch_params(mcits, [(;b, a) for b in [:x, :y], a in 1:3]) do it, paramss
-#         [(; it, params...) for params in paramss]
-#     end
-#     @test nsamples(samples_par4) == 5
-#     @test nparams(samples_par4) == 6
-#     @test samples_par4.params == samples_par2.params
-#     @test samples_par4.real == samples_par2.real
-#     @test samples_par4.random == samples_par2.random
-# end
-
-# @testset begin
-# 	mcits = MonteCarloSamples(real=[0], random=1:1000)
-# 	samples = map(mcits) do it
-#         rand()
-# 	end
-#     @test nsamples(samples) == 1000
-#     @test nparams(samples) == 1
-#     pvals = pvalues_individual(samples)
-#     @test size(pvals) == ()
-#     @test 0 < only(pvals).pvalue < 1
-# end

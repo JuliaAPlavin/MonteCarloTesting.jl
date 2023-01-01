@@ -36,6 +36,8 @@ randomvals(mc::MCSamples) = mc.random
 Array containing both the real value and random realizations from `MCSamples`. "
 realrandomvals(mc::MCSamples) = [[realval(mc)]; randomvals(mc)]
 
+Base.:(==)(a::MCSamples, b::MCSamples) = a.real == b.real && a.random == b.random
+
 """
     montecarlo(; real::T, random::Vector{T})
     montecarlo(; real::T, randomfunc::(RNG -> T), nrandom::Int[, rng::AbstractRNG])
