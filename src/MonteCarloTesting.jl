@@ -57,8 +57,12 @@ function montecarlo(; real, random=nothing, randomfunc=nothing, nrandom=nothing,
 			@assert ccrng == crng
 			x = randomfunc(ccrng)
 			@assert ccrng != crng  "Provided `randomfunc(rng)` doesn't use its `rng` argument. This can't be right!"
-			y = randomfunc(crng)
-			@assert x == y  "Provided `randomfunc(rng)` returns different values when called with the same `rng`."
+			if x == x
+				y = randomfunc(crng)
+				@assert x == y  "Provided `randomfunc(rng)` returns different values when called with the same `rng`."
+			else
+				@warn "Cannot check whether `randomfunc(rng)` returns the same result given the same `rng`: its return value `x != x`."
+			end
 		end
 		rngs = map(seed -> Random.seed!(copy(rng), seed), rand(rng, UInt, nrandom))
 		MCSamples(; real, random=mapview(rng -> randomfunc(copy(rng)), rngs))
