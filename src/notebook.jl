@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.16.0
+# v0.17.3
 
 using Markdown
 using InteractiveUtils
@@ -36,6 +36,40 @@ function montecarlo(; real, random)
 	MCSamples(; real, random)
 end
 
+# ╔═╡ acbb7ce8-c1ec-4c15-a2ac-d6d48e97b212
+struct Fraction end
+
+# ╔═╡ 7b167e1d-0fe0-44a1-af35-6e76748bb928
+mct = montecarlo(real=0, random=[-1, 0, 0, 0, 0, 0, 0, 1, 1])
+
+# ╔═╡ c081871f-2359-4cd4-a5cb-49c0a9688ad3
+function mapsamples(f, mcs::MCSamples; mapfunc=map)
+	return MCSamples(;
+		real=f(realval(mcs)),
+		random=mapfunc(f, randomvals(mcs)),
+	)
+end
+
+# ╔═╡ f0318549-27ee-4f8e-9f21-cd667e69745f
+mc1 = montecarlo(
+	real=range(0.5, 0.6, length=100) |> collect,
+	random=[rand(100) for _ in 1:1000]
+)
+
+# ╔═╡ cd73f805-e7aa-4d56-92d9-f65011a2f1cd
+function swap_realval(mc::MCSamples, randix::Int)
+	MCSamples(;
+		real=mc.random[randix],
+		random=[mc.random[begin:randix-1]; [mc.real]; mc.random[randix+1:end]],
+	)
+end
+
+# ╔═╡ 32632c1f-a353-4e8b-9a53-8370008a74f9
+
+
+# ╔═╡ f5474665-42e5-4b9f-989e-a5699e1b3107
+Base.first(ka::KeyedArray) = first(parent(ka))
+
 # ╔═╡ 20dfa82e-0f3d-4972-b69d-7a4293deee8a
 begin
 	@with_kw struct MCSamplesMulti{A <: AbstractArray{<:MCSamples}}
@@ -61,12 +95,6 @@ begin
 	Base.eltype(mc::MCSamples) = sampletype(mc)
 end
 
-# ╔═╡ ec957120-17b6-42bf-bc26-4671ec784455
-Base.broadcastable(mcm::MCSamplesMulti) = mcm.arr
-
-# ╔═╡ acbb7ce8-c1ec-4c15-a2ac-d6d48e97b212
-struct Fraction end
-
 # ╔═╡ cdc0bc47-e0c6-4d5f-8fd6-397b949c97ed
 function pvalue(mc::MCSamples, mode::Type{Fraction}=Fraction; alt)
 	@assert eltype(mc) <: Real
@@ -85,6 +113,9 @@ function pvalue(mc::MCSamples, mode::Type{Poisson}; alt)
 		   @assert false
 end
 
+# ╔═╡ ec957120-17b6-42bf-bc26-4671ec784455
+Base.broadcastable(mcm::MCSamplesMulti) = mcm.arr
+
 # ╔═╡ 8c8763dc-1f6c-447e-a80d-09cef3efefc7
 function pvalues_all(mc::MCSamples, mode::Type{Fraction}=Fraction; alt)
 	@assert eltype(mc) <: Real
@@ -94,22 +125,11 @@ function pvalues_all(mc::MCSamples, mode::Type{Fraction}=Fraction; alt)
 	return KeyedArray(nps ./ length(ranks), 0:nrandom(mc))
 end
 
-# ╔═╡ 7b167e1d-0fe0-44a1-af35-6e76748bb928
-mct = montecarlo(real=0, random=[-1, 0, 0, 0, 0, 0, 0, 1, 1])
-
 # ╔═╡ 54829dbe-652e-439e-bf32-3d34930854d8
 pvalue(mct; alt= >=), pvalues_all(mct; alt= >=)
 
 # ╔═╡ 992a0f69-cc62-45f7-976c-1329f9dd3dc6
 pvalue(mct; alt= <=), pvalues_all(mct; alt= <=)
-
-# ╔═╡ c081871f-2359-4cd4-a5cb-49c0a9688ad3
-function mapsamples(f, mcs::MCSamples; mapfunc=map)
-	return MCSamples(;
-		real=f(realval(mcs)),
-		random=mapfunc(f, randomvals(mcs)),
-	)
-end
 
 # ╔═╡ 448e29aa-f1cb-4353-bfca-a372706c30f3
 function mapsamples(f, mcm::MCSamplesMulti; mapfunc=map)
@@ -119,23 +139,6 @@ function mapsamples(f, mcm::MCSamplesMulti; mapfunc=map)
 		end
 	)
 end
-
-# ╔═╡ 7e730830-74c2-424b-95cc-c69f026592fb
-function map_w_params(f, mcs::MCSamples, params; mapfunc=map)
-	return MCSamplesMulti(
-		map(KeyedArray(params)) do pars
-			mapsamples(mcs; mapfunc) do sample
-				f(sample, pars)
-			end
-		end
-	)
-end
-
-# ╔═╡ f0318549-27ee-4f8e-9f21-cd667e69745f
-mc1 = montecarlo(
-	real=range(0.5, 0.6, length=100) |> collect,
-	random=[rand(100) for _ in 1:1000]
-)
 
 # ╔═╡ 9619145e-4ce5-4230-9249-42b5010cc4f8
 mc2 = mapsamples(mc1) do xs
@@ -151,19 +154,22 @@ pvalue(mc2, alt= >=), pvalue(mc2, alt= <=)
 # ╔═╡ b9db5957-0e03-422f-9d22-cffef74e1195
 pvalue(mc2, Fraction, alt= >=)
 
-# ╔═╡ cd73f805-e7aa-4d56-92d9-f65011a2f1cd
-function swap_realval(mc::MCSamples, randix::Int)
-	MCSamples(;
-		real=mc.random[randix],
-		random=[mc.random[begin:randix-1]; [mc.real]; mc.random[randix+1:end]],
-	)
-end
-
 # ╔═╡ d8b939bc-e550-4f25-a2d7-f32dd74922cf
 pvalue(swap_realval(mc2, 12), alt= >=)
 
 # ╔═╡ 6ee783ab-6fdd-472d-9d32-0a2a0cab449f
 pvalues_all(mc2; alt= >=)
+
+# ╔═╡ 7e730830-74c2-424b-95cc-c69f026592fb
+function map_w_params(f, mcs::MCSamples, params; mapfunc=map)
+	return MCSamplesMulti(
+		map(KeyedArray(params)) do pars
+			mapsamples(mcs; mapfunc) do sample
+				f(sample, pars)
+			end
+		end
+	)
+end
 
 # ╔═╡ 8faae6a7-7d45-49b8-a4f5-dd37183d5aab
 function map_w_params(f, mcm::MCSamplesMulti, params; mapfunc=map)
@@ -202,12 +208,6 @@ end
 
 # ╔═╡ 67090b29-e406-4d62-8c89-37a969df8101
 pvalue.(mc5, alt= >=)
-
-# ╔═╡ 32632c1f-a353-4e8b-9a53-8370008a74f9
-
-
-# ╔═╡ f5474665-42e5-4b9f-989e-a5699e1b3107
-Base.first(ka::KeyedArray) = first(parent(ka))
 
 # ╔═╡ e4e250a0-be64-4c84-bf4f-47798deb1925
 function pvalue_wtrials(mcm::MCSamplesMulti; alt)
