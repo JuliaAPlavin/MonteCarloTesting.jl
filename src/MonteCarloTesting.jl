@@ -6,8 +6,7 @@ using Statistics: mean
 using Parameters
 using SplitApplyCombine
 using StatsBase: competerank
-import AxisKeys
-using LazyStack: stack  # AxisKeys supports stacking with LazyStack, and not with SplitApplyCombine
+using AxisKeysExtra
 import Random
 
 export montecarlo, realval, randomvals, realrandomvals, nrandom, sampletype, Fraction, pvalue, pvalues_all, pvalue_post, mapsamples, map_w_params, swap_realval
