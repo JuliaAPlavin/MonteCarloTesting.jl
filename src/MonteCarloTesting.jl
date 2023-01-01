@@ -108,6 +108,15 @@ function mapsamples(f, mcm::MCSamplesMulti; mapfunc=map)
 	)
 end
 
+function map_whole_realizations(f, mcs)
+	return MCSamples(
+		real=f(mapview(realval, mcs)),
+		random=map(1:nrandom(mcs)) do i
+			f(mapview(ps -> randomvals(ps)[i], mcs))
+		end
+	)
+end
+
 """    map_w_params(f::( (T, P) -> U ), mc::MCSamples{T}, params::RectiGrid{P} [; mapfunc=map])::MCSamplesMulti{U}
 
 Add deterministic parameters to Monte-Carlo realizations.
@@ -186,11 +195,14 @@ function pvalue(mc::MCSamples, mode::Type{Poisson}; alt)
            @assert false
 end
 
-"""    pvalues_all(mc::MCSamples, [mode::Type=Fraction]; alt)::MCSamples{Real}
+"""    pvalues_all(mc::Union{MCSamples, MCSamplesMulti}, [mode::Type=Fraction]; alt)::MCSamples{Real}
 
-Estimate the p-value for the real value, and "p-values" for all random realizations. The latter correspond to swapping each realization with the real value and computing the regular p-value. Time: `O(n log(n))` where `n = nrandom(mc)`.
+Estimate the p-value for the real value, and "p-values" for all random realizations.
+The latter correspond to swapping each realization with the real value and computing the regular p-value.
 
-See `pvalue()` docs for more details.
+For MCSamplesMulti, maps over all parameters.
+
+See also `pvalue()` docs.
 """
 function pvalues_all(mc::MCSamples, mode::Type{Fraction}=Fraction; alt)
 	@assert eltype(mc) <: Real
@@ -201,6 +213,12 @@ function pvalues_all(mc::MCSamples, mode::Type{Fraction}=Fraction; alt)
 	return MCSamples(real=pvals[1], random=pvals[2:end])
 end
 
+function pvalues_all(mcm::MCSamplesMulti, mode=Fraction; alt)
+	MCSamplesMulti(map(mcm.arr) do mc
+		pvalues_all(mc, mode; alt)
+	end)
+end
+
 """    pvalue_post(mc::MCSamplesMulti; alt)
 
 Compute the so-called _post-trial_ p-value. That's an estimate of the probability to obtain the pre-trial p-value as low as it is in random realizations.
@@ -209,19 +227,10 @@ Compute the so-called _post-trial_ p-value. That's an estimate of the probabilit
 """
 function pvalue_post(mcm::MCSamplesMulti; alt, combine=minimum)
 	# pvalue for each realization and parameter value:
-	ps_all = map(mcm.arr) do mc
-		pvalues_all(mc; alt)
-	end
-
-	# pvalue for each realization:
-	pretrials = MCSamples(
-		real=combine(mapview(realval, ps_all)),
-		random=map(1:nrandom(mcm)) do i
-			combine(mapview(ps -> randomvals(ps)[i], ps_all))
-		end
-	)
-
-	return pvalue(pretrials; alt=<=)
+	ps_all = pvalues_all(mcm; alt)
+	# test statistics for each realization:
+	test_stats = map_whole_realizations(combine, ps_all)
+	return pvalue(test_stats; alt=<=)
 end
 
 end
