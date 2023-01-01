@@ -65,6 +65,8 @@ end
         # don't pass rng
     )
     @test sum(randomvals(mc3)) != sum(randomvals(mc2))
+
+    @test_throws AssertionError montecarlo(real=0., randomfunc=_ -> rand(), nrandom=100)
 end
 
 @testset "common usage" begin
@@ -106,10 +108,10 @@ end
         ps.mul * x^ps.p
     end
     @test nrandom(mc5) == 1000
-    @test pvalue_wtrials(mc5; alt= >=).pretrial ≈ 0.039960  rtol=1e-4
-    @test pvalue_wtrials(mc5; alt= >=).posttrial ≈ 0.206793  rtol=1e-4
-    @test pvalue_wtrials(mc5(n= >=(90)); alt= >=).pretrial ≈ 0.039960  rtol=1e-4
-    @test pvalue_wtrials(mc5(n= >=(90)); alt= >=).posttrial ≈ 0.060939  rtol=1e-4
+    @test minimum(pvalue.(mc5; alt= >=)) ≈ 0.039960  rtol=1e-4
+    @test pvalue_post(mc5; alt= >=) ≈ 0.206793  rtol=1e-4
+    @test minimum(pvalue.(mc5(n= >=(90)); alt= >=)) ≈ 0.039960  rtol=1e-4
+    @test pvalue_post(mc5(n= >=(90)); alt= >=) ≈ 0.060939  rtol=1e-4
 end
 
 @testset "different pvalues" begin

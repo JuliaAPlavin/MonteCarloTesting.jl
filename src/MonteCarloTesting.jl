@@ -11,7 +11,7 @@ import AxisKeys
 using LazyStack: stack  # AxisKeys supports stacking with LazyStack, and not with SplitApplyCombine
 import Random
 
-export montecarlo, realval, randomvals, realrandomvals, nrandom, sampletype, Poisson, Fraction, pvalue, pvalues_all, pvalue_wtrials, mapsamples, map_w_params, swap_realval
+export montecarlo, realval, randomvals, realrandomvals, nrandom, sampletype, Poisson, Fraction, pvalue, pvalues_all, pvalue_post, mapsamples, map_w_params, swap_realval
 
 
 """ Stores the real/actual/true value together with its Monte-Carlo realizations. """
@@ -52,6 +52,12 @@ function montecarlo(; real, random=nothing, randomfunc=nothing, nrandom=nothing,
 	if !isnothing(random)
 		MCSamples(; real, random)
 	else
+		let crng = copy(rng)
+			ccrng = copy(crng)
+			@assert ccrng == crng
+			randomfunc(ccrng)
+			@assert ccrng != crng  "Provided `randomfunc(rng)` doesn't use its `rng` argument. This can't be right!"
+		end
 		rngs = map(seed -> Random.seed!(copy(rng), seed), rand(rng, UInt, nrandom))
 		MCSamples(; real, random=mapview(rng -> randomfunc(copy(rng)), rngs))
 	end
@@ -66,6 +72,7 @@ end
 
 nrandom(mcm::MCSamplesMulti) = nrandom(first(mcm.arr))
 
+Base.iterate(mcm::MCSamplesMulti, args...) = iterate(mcm.arr, args...)
 Base.broadcastable(mcm::MCSamplesMulti) = mcm.arr
 Base.size(mcm::MCSamplesMulti) = size(mcm.arr)
 Base.getindex(mcm::MCSamplesMulti, I::Int...) = mcm.arr[I...]
@@ -101,6 +108,15 @@ function mapsamples(f, mcm::MCSamplesMulti; mapfunc=map)
 	)
 end
 
+function map_whole_realizations(f, mcs)
+	return MCSamples(
+		real=f(mapview(realval, mcs)),
+		random=map(1:nrandom(mcs)) do i
+			f(mapview(ps -> randomvals(ps)[i], mcs))
+		end
+	)
+end
+
 """    map_w_params(f::( (T, P) -> U ), mc::MCSamples{T}, params::RectiGrid{P} [; mapfunc=map])::MCSamplesMulti{U}
 
 Add deterministic parameters to Monte-Carlo realizations.
@@ -126,6 +142,37 @@ function map_w_params(f, mcm::MCSamplesMulti, params; mapfunc=map)
 			map(params) do pars
 				mapsamples(mc; mapfunc) do sample
 					f(sample, merge(prev_pars, pars))
+				end
+			end
+		end |> stack
+	)
+end
+
+function map_w_params(f, mcs::MCSamples; mapfunc=map)
+	mc_tmp = mapsamples(mcs; mapfunc) do sample
+		f(sample, (;))
+	end
+	axks = named_axiskeys(realval(mc_tmp))
+	@assert all(A -> named_axiskeys(A) == axks, randomvals(mc_tmp))
+	MCSamplesMulti(map(grid(;axks...)) do pars
+		mapsamples(mc_tmp) do ss
+			ss(;pars...)
+		end
+	end)
+end
+
+function map_w_params(f, mcm::MCSamplesMulti; mapfunc=map)
+	prev_grid = grid(; named_axiskeys(mcm.arr)...)
+	return MCSamplesMulti(
+		map(prev_grid, mcm.arr) do prev_pars, mc
+			mc_tmp = mapsamples(mc; mapfunc) do sample
+				f(sample, prev_pars)
+			end
+			axks = named_axiskeys(realval(mc_tmp))
+			@assert all(A -> named_axiskeys(A) == axks, randomvals(mc_tmp))
+			map(grid(;axks...)) do pars
+				mapsamples(mc_tmp) do ss
+					ss(;pars...)
 				end
 			end
 		end |> stack
@@ -179,11 +226,14 @@ function pvalue(mc::MCSamples, mode::Type{Poisson}; alt)
            @assert false
 end
 
-"""    pvalues_all(mc::MCSamples, [mode::Type=Fraction]; alt)::MCSamples{Real}
+"""    pvalues_all(mc::Union{MCSamples, MCSamplesMulti}, [mode::Type=Fraction]; alt)::MCSamples{Real}
 
-Estimate the p-value for the real value, and "p-values" for all random realizations. The latter correspond to swapping each realization with the real value and computing the regular p-value. Time: `O(n log(n))` where `n = nrandom(mc)`.
+Estimate the p-value for the real value, and "p-values" for all random realizations.
+The latter correspond to swapping each realization with the real value and computing the regular p-value.
 
-See `pvalue()` docs for more details.
+For MCSamplesMulti, maps over all parameters.
+
+See also `pvalue()` docs.
 """
 function pvalues_all(mc::MCSamples, mode::Type{Fraction}=Fraction; alt)
 	@assert eltype(mc) <: Real
@@ -193,32 +243,25 @@ function pvalues_all(mc::MCSamples, mode::Type{Fraction}=Fraction; alt)
 	pvals = nps ./ length(ranks)
 	return MCSamples(real=pvals[1], random=pvals[2:end])
 end
-"""    pvalue_wtrials(mc::MCSamplesMulti; alt)
 
-Compute so-called _pre-trial_ and _post-trial_ p-values.
-- Pre-trial: minimum of individual p-values for each combination of deterministic parameters. Affected by the multiple comparisons issue.
-- Post-trial: estimate of the probability to obtan the pre-trial p-value as low as it is in random realizations.
+function pvalues_all(mcm::MCSamplesMulti, mode=Fraction; alt)
+	MCSamplesMulti(map(mcm.arr) do mc
+		pvalues_all(mc, mode; alt)
+	end)
+end
+
+"""    pvalue_post(mc::MCSamplesMulti; alt)
+
+Compute the so-called _post-trial_ p-value. That's an estimate of the probability to obtain the pre-trial p-value as low as it is in random realizations.
 
 `alt`: specification of the alternative hypothesis, passed as-is to `pvalue()`.
 """
-function pvalue_wtrials(mcm::MCSamplesMulti; alt)
+function pvalue_post(mcm::MCSamplesMulti; alt, combine=minimum)
 	# pvalue for each realization and parameter value:
-	ps_all = map(mcm.arr) do mc
-		pvalues_all(mc; alt)
-	end
-
-	# pvalue for each realization:
-	pretrials = MCSamples(
-		real=minimum(ps -> realval(ps), ps_all),
-		random=map(1:nrandom(mcm)) do i
-			minimum(ps -> randomvals(ps)[i], ps_all)
-		end
-	)
-
-	pretrial = realval(pretrials)  # actual pretrial pvalue
-	posttrial = pvalue(pretrials; alt=<=)
-
-	(; pretrial, posttrial)
+	ps_all = pvalues_all(mcm; alt)
+	# test statistics for each realization:
+	test_stats = map_whole_realizations(combine, ps_all)
+	return pvalue(test_stats; alt=<=)
 end
 
 end
