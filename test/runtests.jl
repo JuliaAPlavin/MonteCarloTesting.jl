@@ -55,6 +55,14 @@ using Test
     @test realval(mc2(a=1)) == 1
 end
 
+@testset "PValue" begin
+    @test sprint(show, PValue(0.1234)) == "1.2e-1 (1.5σ)"
+    @test sprint(show, PValue(1.234e-5)) == "1.2e-5 (4.4σ)"
+
+    mc = montecarlo(real=0, random=[-1, 0, 0, 0, 0, 0, 0, 1, 1])
+    @test PValue(pvalue(mc; alt= >=)) == pvalue(PValue, mc; alt= >=)
+end
+
 @testset "randomization" begin
     mc1 = montecarlo(
         real=0.,

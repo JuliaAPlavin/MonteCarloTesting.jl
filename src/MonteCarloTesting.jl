@@ -10,10 +10,12 @@ using IntervalSets
 using Accessors
 using ConstructionBaseExtras  # for IntervalSets
 import Random
+using Printf
 
 export
     montecarlo,
     realval, randomvals, realrandomvals, nrandom, sampletype,
+    PValue,
     Fraction, pvalue, pvalues_all, pvalue_post,
     pvalue_tiesinterval, pvalue_mcinterval,
     mapsamples, map_w_params,
@@ -22,7 +24,7 @@ export
 
 function __init__()
     @require Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f" begin
-        using .Distributions: fit, cdf, ccdf, Poisson
+        using .Distributions: fit, cdf, ccdf, quantile, Poisson, Normal
 
         function pvalue(mc::MCSamples, mode::Type{Poisson}; alt)
             @assert sampletype(mc) <: Real
@@ -31,9 +33,26 @@ function __init__()
                    alt == (<=) ?  cdf(dist, realval(mc)) :
                    @assert false
         end
+
+        nσ(p::PValue) = quantile(Normal(0, 1), 1-p.p/2)
+        _nσ_str(p::PValue) = "$(round(nσ(p), digits=1))σ"
     end
 end
 
+
+struct PValue
+    p::Float64
+end
+
+nσ(p::PValue) = error("Load Distributions")
+_nσ_str(p::PValue) = "XXσ"
+
+function Base.show(io::IO, p::PValue)
+    # print(io, lpad(round(100*p.p, sigdigits=2), 5), "%")
+    s = @sprintf "%.1e" p.p
+    print(io, replace(s, r"(?<=[+-])0" => ""))
+    print(io, " (", _nσ_str(p), ")")
+end
 
 
 """ Stores the real/actual/true value together with its Monte-Carlo realizations. """
@@ -259,6 +278,8 @@ The direction of the alternative hypothesis is speicifed by the `alt` parameter:
 `mode = Poisson`: fit the Poisson distribution to random realizations and compute `p = cdf(real)` or `p = ccdf(real - 1)` depending on `alt`.
 """
 function pvalue end
+
+pvalue(::Type{PValue}, args...; kwargs...) = PValue(pvalue(args...; kwargs...))
 
 function pvalue(mc::MCSamples, mode::Type{Fraction}=Fraction; alt)
     @assert sampletype(mc) <: Real
