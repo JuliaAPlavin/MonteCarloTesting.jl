@@ -31,8 +31,8 @@ end
 
 """ Stores the real/actual/true value together with its Monte-Carlo realizations. """
 Base.@kwdef struct MCSamples{T, AT <: AbstractArray{T}}
-	real::T
-	random::AT
+    real::T
+    random::AT
 end
 
 "    realval(mc::MCSamples{T})::T
@@ -63,33 +63,33 @@ Realizations can be specified as a `random::Vector`, or generated lazily on-dema
 Reproduceability in the latter case is ensured by creating an array of copied and seeded `rng`s.
 """
 function montecarlo(; real, random=nothing, randomfunc=nothing, nrandom=nothing, rng=Random.default_rng())
-	@assert !isnothing(random) != (!isnothing(randomfunc) && !isnothing(nrandom))
-	if !isnothing(random)
-		MCSamples(; real, random)
-	else
-		check_randomfunc(randomfunc, copy(rng))
-		rngs = map(seed -> Random.seed!(copy(rng), seed), rand(rng, UInt, nrandom))
-		MCSamples(; real, random=mapview(rng -> randomfunc(copy(rng)), rngs))
-	end
+    @assert !isnothing(random) != (!isnothing(randomfunc) && !isnothing(nrandom))
+    if !isnothing(random)
+        MCSamples(; real, random)
+    else
+        check_randomfunc(randomfunc, copy(rng))
+        rngs = map(seed -> Random.seed!(copy(rng), seed), rand(rng, UInt, nrandom))
+        MCSamples(; real, random=mapview(rng -> randomfunc(copy(rng)), rngs))
+    end
 end
 
 function check_randomfunc(randomfunc, rng)
-	crng = copy(rng)
-	@assert crng == rng
-	x = randomfunc(crng)
-	@assert crng != rng  "Provided `randomfunc(rng)` doesn't use its `rng` argument. This can't be right!"
-	xx = try
-		deepcopy(x)
-	catch e
-		@warn "Cannot check whether `randomfunc(rng)` returns the same result given the same `rng`"  e
-		return
-	end
-	if x == xx
-		y = randomfunc(rng)
-		@assert x == y  "Provided `randomfunc(rng)` returns different values when called with the same `rng`."
-	else
-		@warn "Cannot check whether `randomfunc(rng)` returns the same result given the same `rng`: its return value `x != deepcopy(x)`."
-	end
+    crng = copy(rng)
+    @assert crng == rng
+    x = randomfunc(crng)
+    @assert crng != rng  "Provided `randomfunc(rng)` doesn't use its `rng` argument. This can't be right!"
+    xx = try
+        deepcopy(x)
+    catch e
+        @warn "Cannot check whether `randomfunc(rng)` returns the same result given the same `rng`"  e
+        return
+    end
+    if x == xx
+        y = randomfunc(rng)
+        @assert x == y  "Provided `randomfunc(rng)` returns different values when called with the same `rng`."
+    else
+        @warn "Cannot check whether `randomfunc(rng)` returns the same result given the same `rng`: its return value `x != deepcopy(x)`."
+    end
 end
 
 
@@ -125,27 +125,27 @@ Transform `mc` by applying `f` to each sample, both real value and random realiz
 `mapfunc` argument can be used for parallelization: eg, `mapfunc = ThreadsX.map`.
 """
 function mapsamples(f, mcs::MCSamples; mapfunc=map)
-	return MCSamples(;
-		real=f(realval(mcs)),
-		random=mapfunc(f, randomvals(mcs)),
-	)
+    return MCSamples(;
+        real=f(realval(mcs)),
+        random=mapfunc(f, randomvals(mcs)),
+    )
 end
 
 function mapsamples(f, mcm::MCSamplesMulti; mapfunc=map)
-	return MCSamplesMulti(
-		map(mcm.arr) do mc
-			mapsamples(f, mc; mapfunc)
-		end
-	)
+    return MCSamplesMulti(
+        map(mcm.arr) do mc
+            mapsamples(f, mc; mapfunc)
+        end
+    )
 end
 
 function map_whole_realizations(f, mcs)
-	return MCSamples(
-		real=f(mapview(realval, mcs)),
-		random=map(1:nrandom(mcs)) do i
-			f(mapview(ps -> randomvals(ps)[i], mcs))
-		end
-	)
+    return MCSamples(
+        real=f(mapview(realval, mcs)),
+        random=map(1:nrandom(mcs)) do i
+            f(mapview(ps -> randomvals(ps)[i], mcs))
+        end
+    )
 end
 
 """    map_w_params(f::( (T, P) -> U ), mc::MCSamples{T}, params::RectiGrid{P} [; mapfunc=map])::MCSamplesMulti{U}
@@ -157,57 +157,57 @@ Applies `f(sample, param)` to each combination of existing samples (both real an
 `mapfunc` argument can be used for parallelization: eg, `mapfunc = ThreadsX.map`.
 """
 function map_w_params(f, mcs::MCSamples, params; mapfunc=map)
-	return MCSamplesMulti(
-		map(params) do pars
-			mapsamples(mcs; mapfunc) do sample
-				f(sample, pars)
-			end
-		end
-	)
+    return MCSamplesMulti(
+        map(params) do pars
+            mapsamples(mcs; mapfunc) do sample
+                f(sample, pars)
+            end
+        end
+    )
 end
 
 function map_w_params(f, mcm::MCSamplesMulti, params; mapfunc=map)
-	prev_grid = grid(; named_axiskeys(mcm.arr)...)
-	return MCSamplesMulti(
-		map(prev_grid, mcm.arr) do prev_pars, mc
-			map(params) do pars
-				mapsamples(mc; mapfunc) do sample
-					f(sample, merge(prev_pars, pars))
-				end
-			end
-		end |> stack
-	)
+    prev_grid = grid(; named_axiskeys(mcm.arr)...)
+    return MCSamplesMulti(
+        map(prev_grid, mcm.arr) do prev_pars, mc
+            map(params) do pars
+                mapsamples(mc; mapfunc) do sample
+                    f(sample, merge(prev_pars, pars))
+                end
+            end
+        end |> stack
+    )
 end
 
 function map_w_params(f, mcs::MCSamples; mapfunc=map)
-	mc_tmp = mapsamples(mcs; mapfunc) do sample
-		f(sample, (;))
-	end
-	axks = named_axiskeys(realval(mc_tmp))
-	@assert all(A -> named_axiskeys(A) == axks, randomvals(mc_tmp))
-	MCSamplesMulti(map(grid(;axks...)) do pars
-		mapsamples(mc_tmp) do ss
-			ss(;pars...)
-		end
-	end)
+    mc_tmp = mapsamples(mcs; mapfunc) do sample
+        f(sample, (;))
+    end
+    axks = named_axiskeys(realval(mc_tmp))
+    @assert all(A -> named_axiskeys(A) == axks, randomvals(mc_tmp))
+    MCSamplesMulti(map(grid(;axks...)) do pars
+        mapsamples(mc_tmp) do ss
+            ss(;pars...)
+        end
+    end)
 end
 
 function map_w_params(f, mcm::MCSamplesMulti; mapfunc=map)
-	prev_grid = grid(; named_axiskeys(mcm.arr)...)
-	return MCSamplesMulti(
-		map(prev_grid, mcm.arr) do prev_pars, mc
-			mc_tmp = mapsamples(mc; mapfunc) do sample
-				f(sample, prev_pars)
-			end
-			axks = named_axiskeys(realval(mc_tmp))
-			@assert all(A -> named_axiskeys(A) == axks, randomvals(mc_tmp))
-			map(grid(;axks...)) do pars
-				mapsamples(mc_tmp) do ss
-					ss(;pars...)
-				end
-			end
-		end |> stack
-	)
+    prev_grid = grid(; named_axiskeys(mcm.arr)...)
+    return MCSamplesMulti(
+        map(prev_grid, mcm.arr) do prev_pars, mc
+            mc_tmp = mapsamples(mc; mapfunc) do sample
+                f(sample, prev_pars)
+            end
+            axks = named_axiskeys(realval(mc_tmp))
+            @assert all(A -> named_axiskeys(A) == axks, randomvals(mc_tmp))
+            map(grid(;axks...)) do pars
+                mapsamples(mc_tmp) do ss
+                    ss(;pars...)
+                end
+            end
+        end |> stack
+    )
 end
 
 """    swap_realval(mc, randix::Int)
@@ -218,10 +218,10 @@ Keeps the original `MCSamples` object intact.
 Can be useful for sanity checks: ensure that the analysis doesn't yield significant results for a random realization.
 """
 function swap_realval(mc::MCSamples, randix::Int)
-	MCSamples(;
-		real=mc.random[randix],
-		random=[mc.random[begin:randix-1]; [mc.real]; mc.random[randix+1:end]],
-	)
+    MCSamples(;
+        real=mc.random[randix],
+        random=[mc.random[begin:randix-1]; [mc.real]; mc.random[randix+1:end]],
+    )
 end
 
 struct Fraction end
@@ -259,18 +259,18 @@ For MCSamplesMulti, maps over all parameters.
 See also `pvalue()` docs.
 """
 function pvalues_all(mc::MCSamples, mode::Type{Fraction}=Fraction; alt)
-	@assert eltype(mc) <: Real
-	@assert alt(realval(mc), realval(mc))
-	ranks = competerank(realrandomvals(mc); lt=!alt)
-	nps = length(ranks) + 1 .- ranks
-	pvals = nps ./ length(ranks)
-	return MCSamples(real=pvals[1], random=pvals[2:end])
+    @assert eltype(mc) <: Real
+    @assert alt(realval(mc), realval(mc))
+    ranks = competerank(realrandomvals(mc); lt=!alt)
+    nps = length(ranks) + 1 .- ranks
+    pvals = nps ./ length(ranks)
+    return MCSamples(real=pvals[1], random=pvals[2:end])
 end
 
 function pvalues_all(mcm::MCSamplesMulti, mode=Fraction; alt)
-	MCSamplesMulti(map(mcm.arr) do mc
-		pvalues_all(mc, mode; alt)
-	end)
+    MCSamplesMulti(map(mcm.arr) do mc
+        pvalues_all(mc, mode; alt)
+    end)
 end
 
 """    pvalue_post(mc::MCSamplesMulti; alt)
@@ -280,11 +280,11 @@ Compute the so-called _post-trial_ p-value. That's an estimate of the probabilit
 `alt`: specification of the alternative hypothesis, passed as-is to `pvalue()`.
 """
 function pvalue_post(mcm::MCSamplesMulti; alt, combine=minimum)
-	# pvalue for each realization and parameter value:
-	ps_all = pvalues_all(mcm; alt)
-	# test statistics for each realization:
-	test_stats = map_whole_realizations(combine, ps_all)
-	return pvalue(test_stats; alt=<=)
+    # pvalue for each realization and parameter value:
+    ps_all = pvalues_all(mcm; alt)
+    # test statistics for each realization:
+    test_stats = map_whole_realizations(combine, ps_all)
+    return pvalue(test_stats; alt=<=)
 end
 
 end
