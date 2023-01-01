@@ -104,13 +104,20 @@ nrandom(mcm::MCSamplesMulti) = nrandom(first(mcm.arr))
 Base.iterate(mcm::MCSamplesMulti, args...) = iterate(mcm.arr, args...)
 Base.broadcastable(mcm::MCSamplesMulti) = mcm.arr
 Base.size(mcm::MCSamplesMulti) = size(mcm.arr)
-Base.getindex(mcm::MCSamplesMulti, I::Int...) = mcm.arr[I...]
-Base.getindex(mcm::MCSamplesMulti, I...) = MCSamplesMulti(mcm.arr[I...])
-(mcm::MCSamplesMulti)(args...; kwargs...) = MCSamplesMulti(mcm.arr(args...; kwargs...))
 Base.parent(mcm::MCSamplesMulti) = mcm.arr
 AxisKeys.dimnames(mcm::MCSamplesMulti, args...) = dimnames(mcm.arr, args...)
 AxisKeys.axiskeys(mcm::MCSamplesMulti, args...) = axiskeys(mcm.arr, args...)
 AxisKeys.named_axiskeys(mcm::MCSamplesMulti, args...) = named_axiskeys(mcm.arr, args...)
+
+function Base.getindex(mcm::MCSamplesMulti, I...)
+    data = mcm.arr[I...]
+    data isa MCSamples ? data : MCSamplesMulti(data)
+end
+
+function (mcm::MCSamplesMulti)(args...; kwargs...)
+    data = mcm.arr(args...; kwargs...)
+    data isa MCSamples ? data : MCSamplesMulti(data)
+end
 
 sampletype(::Type{<:MCSamples{T}}) where {T} = T
 sampletype(::Type{<:MCSamplesMulti{A}}) where {A} = sampletype(eltype(A))
