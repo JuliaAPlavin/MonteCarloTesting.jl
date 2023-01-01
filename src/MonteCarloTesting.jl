@@ -11,7 +11,7 @@ import AxisKeys
 using LazyStack: stack  # AxisKeys supports stacking with LazyStack, and not with SplitApplyCombine
 import Random
 
-export montecarlo, realval, randomvals, realrandomvals, nrandom, sampletype, Poisson, Fraction, pvalue, pvalues_all, pvalue_wtrials, mapsamples, map_w_params, swap_realval
+export montecarlo, realval, randomvals, realrandomvals, nrandom, sampletype, Poisson, Fraction, pvalue, pvalues_all, pvalue_post, mapsamples, map_w_params, swap_realval
 
 
 """ Stores the real/actual/true value together with its Monte-Carlo realizations. """
@@ -200,15 +200,13 @@ function pvalues_all(mc::MCSamples, mode::Type{Fraction}=Fraction; alt)
 	return MCSamples(real=pvals[1], random=pvals[2:end])
 end
 
-"""    pvalue_wtrials(mc::MCSamplesMulti; alt)
+"""    pvalue_post(mc::MCSamplesMulti; alt)
 
-Compute so-called _pre-trial_ and _post-trial_ p-values.
-- Pre-trial: minimum of individual p-values for each combination of deterministic parameters. Affected by the multiple comparisons issue.
-- Post-trial: estimate of the probability to obtan the pre-trial p-value as low as it is in random realizations.
+Compute the so-called _post-trial_ p-value. That's an estimate of the probability to obtain the pre-trial p-value as low as it is in random realizations.
 
 `alt`: specification of the alternative hypothesis, passed as-is to `pvalue()`.
 """
-function pvalue_wtrials(mcm::MCSamplesMulti; alt)
+function pvalue_post(mcm::MCSamplesMulti; alt, combine=minimum)
 	# pvalue for each realization and parameter value:
 	ps_all = map(mcm.arr) do mc
 		pvalues_all(mc; alt)
@@ -216,16 +214,13 @@ function pvalue_wtrials(mcm::MCSamplesMulti; alt)
 
 	# pvalue for each realization:
 	pretrials = MCSamples(
-		real=minimum(ps -> realval(ps), ps_all),
+		real=combine(mapview(realval, ps_all)),
 		random=map(1:nrandom(mcm)) do i
-			minimum(ps -> randomvals(ps)[i], ps_all)
+			combine(mapview(ps -> randomvals(ps)[i], ps_all))
 		end
 	)
 
-	pretrial = realval(pretrials)  # actual pretrial pvalue
-	posttrial = pvalue(pretrials; alt=<=)
-
-	(; pretrial, posttrial)
+	return pvalue(pretrials; alt=<=)
 end
 
 end
