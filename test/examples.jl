@@ -6,8 +6,9 @@ using InteractiveUtils
 
 # ╔═╡ e1c26815-6a58-4d61-8e1e-567e1f8c94b5
 begin
-	using Pkg
-	eval(:(Pkg.develop(path="..")))
+	# using Revise
+	# using Pkg
+	# eval(:(Pkg.develop(path="..")))
 	using MonteCarloTesting
 end
 
@@ -161,13 +162,13 @@ PLUTO_PROJECT_TOML_CONTENTS = """
 DisplayAs = "0b91fe84-8a4c-11e9-3e1d-67c38462b6d6"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 MonteCarloTesting = "b75b2f39-c526-438a-aeb3-f18deacfdc57"
-Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 RectiGrids = "8ac6971d-971d-971d-971d-971d5ab1a71a"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 
 [compat]
 DisplayAs = "~0.1.2"
 Distributions = "~0.25.37"
+MonteCarloTesting = "~0.1.0"
 RectiGrids = "~0.1.6"
 """
 
@@ -421,8 +422,8 @@ version = "1.0.2"
 uuid = "a63ad114-7e13-5084-954f-fe012c677804"
 
 [[deps.MonteCarloTesting]]
-deps = ["AxisKeys", "Distributions", "EllipsisNotation", "InteractiveUtils", "LazyStack", "Markdown", "Parameters", "RectiGrids", "SplitApplyCombine", "Statistics", "StatsBase"]
-path = "../../home/aplavin/work/work/neutrino_events/dev/MonteCarloTesting"
+deps = ["AxisKeys", "Distributions", "EllipsisNotation", "InteractiveUtils", "LazyStack", "Markdown", "Parameters", "Random", "RectiGrids", "SplitApplyCombine", "Statistics", "StatsBase"]
+git-tree-sha1 = "9f54dca6b9d6504b8ec763117a01c19dc346d426"
 uuid = "b75b2f39-c526-438a-aeb3-f18deacfdc57"
 version = "0.1.0"
 
