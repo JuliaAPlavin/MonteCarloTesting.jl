@@ -21,47 +21,86 @@ end
 # ╔═╡ ef34f91c-c8cb-4d28-9257-e4d95c828275
 using DisplayAs: Text as AsText
 
-# ╔═╡ 7b167e1d-0fe0-44a1-af35-6e76748bb928
-mct = montecarlo(real=0, random=[-1, 0, 0, 0, 0, 0, 0, 1, 1])
+# ╔═╡ ab1ba14c-604d-4c42-96fc-eb57fcf94a5d
+md"""
+Load required packages:
+"""
 
-# ╔═╡ 54829dbe-652e-439e-bf32-3d34930854d8
-pvalue(mct; alt= >=), pvalues_all(mct; alt= >=)
+# ╔═╡ 06ac9ba4-c9b1-43e3-987c-0f536a081e03
+md"""
+Generate some data...
+"""
 
-# ╔═╡ 992a0f69-cc62-45f7-976c-1329f9dd3dc6
-pvalue(mct; alt= <=), pvalues_all(mct; alt= <=)
+# ╔═╡ f0bbf388-6a3f-4faa-9aaf-85595f57b2dd
+md"""
+The real/true/actual/measured value:
+"""
+
+# ╔═╡ 4129a478-a169-4aed-a843-2c381fd067de
+real = range(0.5, 0.6, length=100) |> collect
+
+# ╔═╡ b8193a80-3c6f-4fdc-ade5-c596caad2dcb
+md"""
+A function to generate random realizations of data under the null hypothesis:
+"""
+
+# ╔═╡ b555bdde-303e-40fb-bca8-e5cf61b77933
+randomfunc = rng -> rand(rng, 100)
+
+# ╔═╡ 00d7a2db-496a-47b0-b3f1-92544533d915
+md"""
+Gather everything into a single struct:
+"""
 
 # ╔═╡ f0318549-27ee-4f8e-9f21-cd667e69745f
-mc1 = montecarlo(
-	real=range(0.5, 0.6, length=100) |> collect,
-	randomfunc=rng -> rand(rng, 100),
-	nrandom=1000
-)
+mc1 = montecarlo(; real, randomfunc, nrandom=1000)
 
-# ╔═╡ c5bdcdbb-cefb-4864-83c5-979baf5c6438
-@assert collect(randomvals(mc1)) == collect(randomvals(mc1))  # repeatable
+# ╔═╡ ce4ebd6c-5325-43d1-bcc7-85c34818979a
+md"""
+It has some sasic accessors:
+"""
+
+# ╔═╡ 8c5ec184-221d-451c-813d-7f0b427efe89
+nrandom(mc1)
+
+# ╔═╡ d6fe18ae-d823-437a-aad8-d0d8eb773f2c
+realval(mc1)
+
+# ╔═╡ 9eb78b5f-fd49-4841-901f-be7c6de51755
+randomvals(mc1)
+
+# ╔═╡ bfd0a34a-47d3-4b67-bbef-875453fe503b
+md"""
+Compute the average of each (real & random) sample:
+"""
 
 # ╔═╡ 9619145e-4ce5-4230-9249-42b5010cc4f8
 mc2 = mapsamples(mc1) do xs
 	mean(xs)
 end
 
+# ╔═╡ b57a7b67-f2f2-477c-826f-8af32fc06f40
+md"""
+Estimate p-value: probability for the `xs` average to be as high as observed, assuming the null hypothesis.
+"""
+
+# ╔═╡ 0ac08d03-ba8a-4816-a690-7b266a4b2cf0
+pvalue(mc2, alt= >=)
+
 # ╔═╡ 38a544b8-9f24-4eb5-aecd-7f4fc842d6c2
-pvalue(mc2, alt= >=), pvalue(mc2, alt= <=)
+md"""
+Two p-values for alternatives in the opposite directions always sum to `> 1`:
+"""
 
 # ╔═╡ 058ebf88-d5cc-4cd5-8c8d-3b446630be58
-@assert pvalue(mc2, alt= >=) + pvalue(mc2, alt= <=) > 1
-
-# ╔═╡ b9db5957-0e03-422f-9d22-cffef74e1195
-pvalue(mc2, Fraction, alt= >=)
-
-# ╔═╡ d8b939bc-e550-4f25-a2d7-f32dd74922cf
-pvalue(swap_realval(mc2, 4), alt= >=), pvalues_all(mc2; alt= >=)
-
-# ╔═╡ 9453efa7-2881-4200-8e2d-3383f263f137
-
+pvalue(mc2, alt= >=) + pvalue(mc2, alt= <=)
 
 # ╔═╡ 8faae6a7-7d45-49b8-a4f5-dd37183d5aab
+md"""
+Processing of the dataset can have some free parameters tried in the process. We provide a way to properly account for multiple trials in p-value estimation.
 
+In this simplistic example, the single free parameter is `n`: number of first elements in `xs` to consider. Perform data processing (compute the average), varying `n`:
+"""
 
 # ╔═╡ 90af90c8-cb89-4365-b575-5f942f78cbb1
 mc3 = map_w_params(mc1, grid(n=10:100)) do xs, ps
@@ -69,16 +108,22 @@ mc3 = map_w_params(mc1, grid(n=10:100)) do xs, ps
 end
 
 # ╔═╡ 9152fa0e-399a-4a4a-b632-2919bb15e279
-mc4 = mapsamples(x -> x^2, mc3)
+md"""
+Compute p-values for each `n`:
+"""
 
 # ╔═╡ 368d1664-71f3-4070-bae0-8351243b9b14
 pvalue.(mc3, alt= >=) |> AsText
 
-# ╔═╡ 68117c26-1697-4180-9c86-36c0a12896be
-pvalue.(mc4, alt= >=) |> AsText
+# ╔═╡ 67bcb80a-e1eb-441c-99f7-596fb2ffafdf
+md"""
+As expected, they are close to 0.5 for small `n`, reaching the original p-value compute on whole vectors for `n = 100`.
+"""
 
-# ╔═╡ f140cf8a-d089-4291-ae46-155e32c9748a
-pvalue.(mc3, Fraction, alt= >=) |> AsText
+# ╔═╡ b475aedc-834b-46bf-8934-99305bbbaffb
+md"""
+Of course, we can add more parameters:
+"""
 
 # ╔═╡ a8dd41ef-c3d4-4735-af20-54c5772022cd
 mc5 = map_w_params(mc3, grid(p=2:4, mul=0.1:0.1:2)) do x, ps
@@ -86,41 +131,29 @@ mc5 = map_w_params(mc3, grid(p=2:4, mul=0.1:0.1:2)) do x, ps
 	ps.mul * x^ps.p
 end
 
+# ╔═╡ 725d9e47-bb28-457c-9384-548558186b19
+md"""
+... and compute p-values for each combination of them:
+"""
+
 # ╔═╡ 67090b29-e406-4d62-8c89-37a969df8101
 pvalue.(mc5, alt= >=) |> AsText
 
 # ╔═╡ 32632c1f-a353-4e8b-9a53-8370008a74f9
-
+md"""
+Compute the so-called pre- and post-trial p-values (see `pvalue_wtrials()` docs):
+"""
 
 # ╔═╡ 3b610570-e0d8-49f5-be69-5f8ae1029a94
 pvalue_wtrials(mc5; alt= >=)
 
-# ╔═╡ 498d8ed9-964b-4485-8f10-0623c1d9790d
-
-
-# ╔═╡ c18788a4-5989-4b2f-a01b-e7e736ee5fc6
-axiskeys(mc5), named_axiskeys(mc5)
-
-# ╔═╡ 28e204c0-156b-4e9d-b43d-a223e4eb02f8
-named_axiskeys(mc5(n=100)), mc5(n=100)
+# ╔═╡ 4041e581-6b69-419e-a429-08762c3584f0
+md"""
+Parametrized Monte-Carlo containers can be filtered to a subset of parameter values using `AxisKeys` interface:
+"""
 
 # ╔═╡ ae02c6a9-4b96-4cbe-a4ee-cce5504c3459
 pvalue_wtrials(mc5(n=90:100); alt= >=)
-
-# ╔═╡ d3337bfb-1b4d-45ac-9cb5-946a1a7bd6cd
-
-
-# ╔═╡ 384c7d8b-a7db-4622-ab48-df44204d8e81
-mcp = montecarlo(real=10, random=rand(Poisson(4), 1000))
-
-# ╔═╡ fb0476c5-6fd1-4145-ad94-bb909b5405cb
-pvalue(mcp, alt= >=), pvalue(mcp, alt= <=)
-
-# ╔═╡ 6d674bda-5a19-44e5-9064-363cde17a814
-@assert pvalue(mcp, alt= >=) + pvalue(mcp, alt= <=) > 1
-
-# ╔═╡ 24b7cc8e-4db1-4e28-9347-ea75f1612cf9
-pvalue(mcp, Poisson, alt= >=), pvalue(mcp, Poisson, alt= <=)
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -625,38 +658,39 @@ uuid = "3f19e933-33d8-53b3-aaab-bd5110c3b7a0"
 """
 
 # ╔═╡ Cell order:
+# ╟─ab1ba14c-604d-4c42-96fc-eb57fcf94a5d
 # ╠═e1c26815-6a58-4d61-8e1e-567e1f8c94b5
 # ╠═e3da8cba-8951-48f8-825d-935d127fc5c8
 # ╠═ef34f91c-c8cb-4d28-9257-e4d95c828275
-# ╠═7b167e1d-0fe0-44a1-af35-6e76748bb928
-# ╠═54829dbe-652e-439e-bf32-3d34930854d8
-# ╠═992a0f69-cc62-45f7-976c-1329f9dd3dc6
+# ╟─06ac9ba4-c9b1-43e3-987c-0f536a081e03
+# ╟─f0bbf388-6a3f-4faa-9aaf-85595f57b2dd
+# ╠═4129a478-a169-4aed-a843-2c381fd067de
+# ╟─b8193a80-3c6f-4fdc-ade5-c596caad2dcb
+# ╠═b555bdde-303e-40fb-bca8-e5cf61b77933
+# ╟─00d7a2db-496a-47b0-b3f1-92544533d915
 # ╠═f0318549-27ee-4f8e-9f21-cd667e69745f
-# ╠═c5bdcdbb-cefb-4864-83c5-979baf5c6438
+# ╟─ce4ebd6c-5325-43d1-bcc7-85c34818979a
+# ╠═8c5ec184-221d-451c-813d-7f0b427efe89
+# ╠═d6fe18ae-d823-437a-aad8-d0d8eb773f2c
+# ╠═9eb78b5f-fd49-4841-901f-be7c6de51755
+# ╟─bfd0a34a-47d3-4b67-bbef-875453fe503b
 # ╠═9619145e-4ce5-4230-9249-42b5010cc4f8
-# ╠═38a544b8-9f24-4eb5-aecd-7f4fc842d6c2
+# ╟─b57a7b67-f2f2-477c-826f-8af32fc06f40
+# ╠═0ac08d03-ba8a-4816-a690-7b266a4b2cf0
+# ╟─38a544b8-9f24-4eb5-aecd-7f4fc842d6c2
 # ╠═058ebf88-d5cc-4cd5-8c8d-3b446630be58
-# ╠═b9db5957-0e03-422f-9d22-cffef74e1195
-# ╠═d8b939bc-e550-4f25-a2d7-f32dd74922cf
-# ╠═9453efa7-2881-4200-8e2d-3383f263f137
-# ╠═8faae6a7-7d45-49b8-a4f5-dd37183d5aab
+# ╟─8faae6a7-7d45-49b8-a4f5-dd37183d5aab
 # ╠═90af90c8-cb89-4365-b575-5f942f78cbb1
-# ╠═9152fa0e-399a-4a4a-b632-2919bb15e279
+# ╟─9152fa0e-399a-4a4a-b632-2919bb15e279
 # ╠═368d1664-71f3-4070-bae0-8351243b9b14
-# ╠═68117c26-1697-4180-9c86-36c0a12896be
-# ╠═f140cf8a-d089-4291-ae46-155e32c9748a
+# ╟─67bcb80a-e1eb-441c-99f7-596fb2ffafdf
+# ╟─b475aedc-834b-46bf-8934-99305bbbaffb
 # ╠═a8dd41ef-c3d4-4735-af20-54c5772022cd
+# ╟─725d9e47-bb28-457c-9384-548558186b19
 # ╠═67090b29-e406-4d62-8c89-37a969df8101
-# ╠═32632c1f-a353-4e8b-9a53-8370008a74f9
+# ╟─32632c1f-a353-4e8b-9a53-8370008a74f9
 # ╠═3b610570-e0d8-49f5-be69-5f8ae1029a94
-# ╠═498d8ed9-964b-4485-8f10-0623c1d9790d
-# ╠═c18788a4-5989-4b2f-a01b-e7e736ee5fc6
-# ╠═28e204c0-156b-4e9d-b43d-a223e4eb02f8
+# ╟─4041e581-6b69-419e-a429-08762c3584f0
 # ╠═ae02c6a9-4b96-4cbe-a4ee-cce5504c3459
-# ╠═d3337bfb-1b4d-45ac-9cb5-946a1a7bd6cd
-# ╠═384c7d8b-a7db-4622-ab48-df44204d8e81
-# ╠═fb0476c5-6fd1-4145-ad94-bb909b5405cb
-# ╠═6d674bda-5a19-44e5-9064-363cde17a814
-# ╠═24b7cc8e-4db1-4e28-9347-ea75f1612cf9
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
