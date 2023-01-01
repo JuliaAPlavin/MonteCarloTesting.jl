@@ -1,9 +1,8 @@
 module MonteCarloTesting
 
-
+using Requires
 using RectiGrids
 using Statistics: mean
-using Distributions: fit, cdf, ccdf, Poisson
 using Parameters
 using SplitApplyCombine
 using StatsBase: competerank
@@ -11,7 +10,23 @@ import AxisKeys
 using LazyStack: stack  # AxisKeys supports stacking with LazyStack, and not with SplitApplyCombine
 import Random
 
-export montecarlo, realval, randomvals, realrandomvals, nrandom, sampletype, Poisson, Fraction, pvalue, pvalues_all, pvalue_post, mapsamples, map_w_params, swap_realval
+export montecarlo, realval, randomvals, realrandomvals, nrandom, sampletype, Fraction, pvalue, pvalues_all, pvalue_post, mapsamples, map_w_params, swap_realval
+
+
+function __init__()
+    @require Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f" begin
+        using .Distributions: fit, cdf, ccdf, Poisson
+
+        function pvalue(mc::MCSamples, mode::Type{Poisson}; alt)
+            @assert eltype(mc) <: Real
+            dist = fit(Poisson, randomvals(mc))
+            return alt == (>=) ? ccdf(dist, realval(mc) - 1) :
+                   alt == (<=) ?  cdf(dist, realval(mc)) :
+                   @assert false
+        end
+    end
+end
+
 
 
 """ Stores the real/actual/true value together with its Monte-Carlo realizations. """
@@ -232,14 +247,6 @@ function pvalue(mc::MCSamples, mode::Type{Fraction}=Fraction; alt)
     np = sum(alt.(randomvals(mc), realval(mc)))
     n = nrandom(mc)
     return (np + 1) / (n + 1)
-end
-
-function pvalue(mc::MCSamples, mode::Type{Poisson}; alt)
-    @assert eltype(mc) <: Real
-    dist = fit(Poisson, randomvals(mc))
-    return alt == (>=) ? ccdf(dist, realval(mc) - 1) :
-           alt == (<=) ?  cdf(dist, realval(mc)) :
-           @assert false
 end
 
 """    pvalues_all(mc::Union{MCSamples, MCSamplesMulti}, [mode::Type=Fraction]; alt)::MCSamples{Real}
