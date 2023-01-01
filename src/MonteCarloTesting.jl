@@ -3,7 +3,7 @@ module MonteCarloTesting
 using Requires
 using RectiGrids
 using Statistics: mean
-using SplitApplyCombine: mapview
+using FlexiMaps: mapview
 using StatsBase: competerank
 using AxisKeysExtra
 import Random
