@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.17.6
+# v0.18.0
 
 using Markdown
 using InteractiveUtils
@@ -29,7 +29,7 @@ using Statistics
 using StatsBase
 
 # ╔═╡ 3bf282ed-c016-4dcb-a318-bbee9a07ce67
-using LandauDistribution, Distributions
+using Distributions
 
 # ╔═╡ ce600804-9c41-4bce-a206-2acfe6818a4a
 using DataPipes
@@ -236,9 +236,6 @@ pvals = map(1:10^5) do _
 	pvalue(mc; alt= >=)
 end
 
-# ╔═╡ 7c5c1e16-6ebc-46c5-a93d-6408cb3f481e
-cdf(Landau(log(10)+0.874, π/2), 1/0.04)
-
 # ╔═╡ 2bfa1528-67a9-4ee5-a928-1e8cd365ef36
 function plot_pvals(pvals)
 	common(ax) = let
@@ -318,7 +315,6 @@ PLUTO_PROJECT_TOML_CONTENTS = """
 DataPipes = "02685ad9-2d12-40c3-9f73-c6aeda6a7ff5"
 DisplayAs = "0b91fe84-8a4c-11e9-3e1d-67c38462b6d6"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
-LandauDistribution = "6012e1b8-0df6-47e7-96ae-5acef29e6d22"
 MonteCarloTesting = "b75b2f39-c526-438a-aeb3-f18deacfdc57"
 Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 PyPlotUtils = "5384e752-6c47-47b3-86ac-9d091b110b31"
@@ -333,7 +329,6 @@ ThreadsX = "ac1d9e8a-700a-412c-b207-f0111f4b6c0d"
 DataPipes = "~0.2.5"
 DisplayAs = "~0.1.2"
 Distributions = "~0.25.41"
-LandauDistribution = "~0.2.0"
 MonteCarloTesting = "~0.1.0"
 PyPlotUtils = "~0.1.4"
 RectiGrids = "~0.1.6"
@@ -347,7 +342,7 @@ ThreadsX = "~0.1.9"
 PLUTO_MANIFEST_TOML_CONTENTS = """
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.7.1"
+julia_version = "1.7.2"
 manifest_format = "2.0"
 
 [[deps.AbstractFFTs]]
@@ -645,12 +640,6 @@ git-tree-sha1 = "f2355693d6778a178ade15952b7ac47a4ff97996"
 uuid = "b964fa9f-0449-5b57-a5c2-d3ea65f4040f"
 version = "1.3.0"
 
-[[deps.LandauDistribution]]
-deps = ["Distributions", "StaticArrays"]
-git-tree-sha1 = "f99f94bd9f89fb828092bde7523fcc460978606a"
-uuid = "6012e1b8-0df6-47e7-96ae-5acef29e6d22"
-version = "0.2.0"
-
 [[deps.LazyStack]]
 deps = ["LinearAlgebra", "NamedDims", "OffsetArrays", "Test", "ZygoteRules"]
 git-tree-sha1 = "a8bf67afad3f1ee59d367267adb7c44ccac7fdee"
@@ -728,7 +717,7 @@ uuid = "a63ad114-7e13-5084-954f-fe012c677804"
 deps = ["AxisKeys", "Distributions", "EllipsisNotation", "InteractiveUtils", "LazyStack", "Markdown", "Parameters", "Random", "RectiGrids", "SplitApplyCombine", "Statistics", "StatsBase"]
 path = "../../home/aplavin/.julia/dev/MonteCarloTesting.jl"
 uuid = "b75b2f39-c526-438a-aeb3-f18deacfdc57"
-version = "0.1.0"
+version = "0.1.5"
 
 [[deps.MozillaCACerts_jll]]
 uuid = "14a3606d-f60d-562e-9121-12d972cd8159"
@@ -1090,7 +1079,6 @@ uuid = "3f19e933-33d8-53b3-aaab-bd5110c3b7a0"
 # ╠═1b9f3c54-12f9-4668-b851-e375020947ef
 # ╠═a39e055d-7c16-4ada-9ac1-8981be6b2c5c
 # ╠═3bf282ed-c016-4dcb-a318-bbee9a07ce67
-# ╠═7c5c1e16-6ebc-46c5-a93d-6408cb3f481e
 # ╠═3ae83929-255f-488e-9100-c2cd3bbacde9
 # ╠═3a8e8672-ceee-401d-8953-fed27919e2b2
 # ╠═b0ccd5f9-d4cd-4dd7-953d-328abca78ad0
