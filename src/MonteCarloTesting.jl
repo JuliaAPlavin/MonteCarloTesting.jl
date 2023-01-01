@@ -92,8 +92,10 @@ Base.size(mcm::MCSamplesMulti) = size(mcm.arr)
 Base.getindex(mcm::MCSamplesMulti, I::Int...) = mcm.arr[I...]
 Base.getindex(mcm::MCSamplesMulti, I...) = MCSamplesMulti(mcm.arr[I...])
 (mcm::MCSamplesMulti)(args...; kwargs...) = MCSamplesMulti(mcm.arr(args...; kwargs...))
-AxisKeys.axiskeys(mcm::MCSamplesMulti) = axiskeys(mcm.arr)
-AxisKeys.named_axiskeys(mcm::MCSamplesMulti) = named_axiskeys(mcm.arr)
+Base.parent(mcm::MCSamplesMulti) = mcm.arr
+AxisKeys.dimnames(mcm::MCSamplesMulti, args...) = dimnames(mcm.arr, args...)
+AxisKeys.axiskeys(mcm::MCSamplesMulti, args...) = axiskeys(mcm.arr, args...)
+AxisKeys.named_axiskeys(mcm::MCSamplesMulti, args...) = named_axiskeys(mcm.arr, args...)
 
 sampletype(::Type{<:MCSamples{T}}) where {T} = T
 sampletype(::Type{<:MCSamplesMulti{A}}) where {A} = sampletype(eltype(A))
