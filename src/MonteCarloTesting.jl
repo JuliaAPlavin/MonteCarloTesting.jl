@@ -37,6 +37,8 @@ end
 The real value of `MCSamples`. "
 realval(mc::MCSamples) = mc.real
 
+Accessors.set(mc::MCSamples, ::typeof(realval), v) = @set mc.real = v
+
 "    nrandom(mc::MCSamples)::Int
 Number of random realizations within an `MCSamples` object, or within each of the same-sized `MCSamples` in a container. "
 nrandom(mc::MCSamples) = length(randomvals(mc))
