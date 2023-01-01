@@ -16,7 +16,7 @@ function __init__()
         using .Distributions: fit, cdf, ccdf, Poisson
 
         function pvalue(mc::MCSamples, mode::Type{Poisson}; alt)
-            @assert eltype(mc) <: Real
+            @assert sampletype(mc) <: Real
             dist = fit(Poisson, randomvals(mc))
             return alt == (>=) ? ccdf(dist, realval(mc) - 1) :
                    alt == (<=) ?  cdf(dist, realval(mc)) :
@@ -123,7 +123,7 @@ end
 sampletype(::Type{<:MCSamples{T}}) where {T} = T
 sampletype(::Type{<:MCSamplesMulti{A}}) where {A} = sampletype(eltype(A))
 sampletype(mc::Union{<:MCSamples, <:MCSamplesMulti}) = sampletype(typeof(mc))
-Base.eltype(mc::MCSamples) = sampletype(mc)
+Accessors.set(mc::MCSamples, ::typeof(sampletype), ::Type{T}) where {T} = MCSamples(convert(T, mc.real), convert.(T, mc.random))
 
 
 """    mapsamples(f, mc::Union{MCSamples,MCSamplesMulti} [; mapfunc=map])
@@ -250,7 +250,7 @@ The direction of the alternative hypothesis is speicifed by the `alt` parameter:
 function pvalue end
 
 function pvalue(mc::MCSamples, mode::Type{Fraction}=Fraction; alt)
-    @assert eltype(mc) <: Real
+    @assert sampletype(mc) <: Real
     @assert alt(realval(mc), realval(mc))
     np = sum(alt.(randomvals(mc), realval(mc)))
     n = nrandom(mc)
@@ -267,7 +267,7 @@ For MCSamplesMulti, maps over all parameters.
 See also `pvalue()` docs.
 """
 function pvalues_all(mc::MCSamples, mode::Type{Fraction}=Fraction; alt)
-    @assert eltype(mc) <: Real
+    @assert sampletype(mc) <: Real
     @assert alt(realval(mc), realval(mc))
     ranks = competerank(realrandomvals(mc); lt=!alt)
     nps = length(ranks) + 1 .- ranks
