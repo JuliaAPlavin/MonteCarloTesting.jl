@@ -67,6 +67,7 @@ end
     @test sum(randomvals(mc3)) != sum(randomvals(mc2))
 
     @test_throws AssertionError montecarlo(real=0., randomfunc=_ -> rand(), nrandom=100)
+    @test_throws AssertionError montecarlo(real=0., randomfunc=rng -> (rand(rng); rand()), nrandom=100)
 end
 
 @testset "common usage" begin
