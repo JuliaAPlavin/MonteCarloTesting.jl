@@ -1,4 +1,6 @@
 using MonteCarloTesting
+using IntervalSets
+using Accessors
 using Statistics: mean
 using StableRNGs
 using RectiGrids
@@ -19,6 +21,21 @@ using Test
 
     @test pvalue(mc; alt= >=) == 0.9
     @test pvalue(mc; alt= <=) == 0.8
+
+    let mcf = @set sampletype(mc) = Float64
+
+        @test pvalue(@set(realval(mcf) = -0.1); alt= >=) == 0.9
+        @test pvalue(@set(realval(mcf) = 0.1); alt= >=) == 0.3
+        @test pvalue(@set(realval(mcf) = -0.1); alt= <=) == 0.2
+        @test pvalue(@set(realval(mcf) = 0.1); alt= <=) == 0.8
+
+        @test pvalue_tiesinterval(mc; alt = >=) == 0.3..0.9
+        @test pvalue_tiesinterval(mc; alt = <=) == 0.2..0.8
+
+        @test pvalue_tiesinterval(@set(realval(mcf) = -0.1); alt = >=) == 0.9..0.9
+        @test pvalue_tiesinterval(@set(realval(mcf) = 0.1); alt = >=) == 0.3..0.3
+    end
+
     @test realval(pvalues_all(mc; alt= >=)) == 0.9
     @test realval(pvalues_all(mc; alt= <=)) == 0.8
     @test randomvals(pvalues_all(mc; alt= >=)) == [1.0, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.2, 0.2]

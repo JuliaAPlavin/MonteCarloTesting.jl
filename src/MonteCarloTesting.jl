@@ -6,9 +6,17 @@ using Statistics: mean
 using FlexiMaps: mapview
 using StatsBase: competerank
 using AxisKeysExtra
+using IntervalSets
+using Accessors
+using ConstructionBaseExtras  # for IntervalSets
 import Random
 
-export montecarlo, realval, randomvals, realrandomvals, nrandom, sampletype, Fraction, pvalue, pvalues_all, pvalue_post, mapsamples, map_w_params, swap_realval
+export
+    montecarlo,
+    realval, randomvals, realrandomvals, nrandom, sampletype,
+    Fraction, pvalue, pvalue_tiesinterval, pvalues_all, pvalue_post,
+    mapsamples, map_w_params,
+    swap_realval
 
 
 function __init__()
@@ -254,9 +262,19 @@ function pvalue end
 function pvalue(mc::MCSamples, mode::Type{Fraction}=Fraction; alt)
     @assert sampletype(mc) <: Real
     @assert alt(realval(mc), realval(mc))
-    np = sum(alt.(randomvals(mc), realval(mc)))
+    nalt = count(r -> alt(r, realval(mc)), randomvals(mc))
     n = nrandom(mc)
-    return (np + 1) / (n + 1)
+    return (nalt + 1) / (n + 1)
+end
+
+function pvalue_tiesinterval(mc::MCSamples; alt)
+    @assert sampletype(mc) <: Real
+    @assert alt(realval(mc), realval(mc))
+    nalt = count(r -> alt(r, realval(mc)), randomvals(mc))
+    nalt_lo = count(r -> alt(r, realval(mc)) && !alt(realval(mc), r), randomvals(mc))
+    n = nrandom(mc)
+    nalt_int = nalt_lo..nalt
+    @modify(x -> (x + 1) / (n + 1), nalt_int |> Properties())
 end
 
 """    pvalues_all(mc::Union{MCSamples, MCSamplesMulti}, [mode::Type=Fraction]; alt)::MCSamples{Real}
