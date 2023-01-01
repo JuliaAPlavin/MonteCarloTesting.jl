@@ -72,6 +72,7 @@ end
 
 nrandom(mcm::MCSamplesMulti) = nrandom(first(mcm.arr))
 
+Base.iterate(mcm::MCSamplesMulti, args...) = iterate(mcm.arr, args...)
 Base.broadcastable(mcm::MCSamplesMulti) = mcm.arr
 Base.size(mcm::MCSamplesMulti) = size(mcm.arr)
 Base.getindex(mcm::MCSamplesMulti, I::Int...) = mcm.arr[I...]
