@@ -52,20 +52,28 @@ function montecarlo(; real, random=nothing, randomfunc=nothing, nrandom=nothing,
 	if !isnothing(random)
 		MCSamples(; real, random)
 	else
-		let crng = copy(rng)
-			ccrng = copy(crng)
-			@assert ccrng == crng
-			x = randomfunc(ccrng)
-			@assert ccrng != crng  "Provided `randomfunc(rng)` doesn't use its `rng` argument. This can't be right!"
-			if x == x
-				y = randomfunc(crng)
-				@assert x == y  "Provided `randomfunc(rng)` returns different values when called with the same `rng`."
-			else
-				@warn "Cannot check whether `randomfunc(rng)` returns the same result given the same `rng`: its return value `x != x`."
-			end
-		end
+		check_randomfunc(randomfunc, copy(rng))
 		rngs = map(seed -> Random.seed!(copy(rng), seed), rand(rng, UInt, nrandom))
 		MCSamples(; real, random=mapview(rng -> randomfunc(copy(rng)), rngs))
+	end
+end
+
+function check_randomfunc(randomfunc, rng)
+	crng = copy(rng)
+	@assert crng == rng
+	x = randomfunc(crng)
+	@assert crng != rng  "Provided `randomfunc(rng)` doesn't use its `rng` argument. This can't be right!"
+	xx = try
+		deepcopy(x)
+	catch e
+		@warn "Cannot check whether `randomfunc(rng)` returns the same result given the same `rng`"  e
+		return
+	end
+	if x == xx
+		y = randomfunc(rng)
+		@assert x == y  "Provided `randomfunc(rng)` returns different values when called with the same `rng`."
+	else
+		@warn "Cannot check whether `randomfunc(rng)` returns the same result given the same `rng`: its return value `x != deepcopy(x)`."
 	end
 end
 
