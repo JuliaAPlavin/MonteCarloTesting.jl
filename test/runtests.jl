@@ -21,6 +21,7 @@ using Test
 
     @test pvalue(mc; alt= >=) == 0.9
     @test pvalue(mc; alt= <=) == 0.8
+    @test pvalue_mcinterval(mc; alt= >=) == 0.5577894550965302..0.9806720833650083
 
     let mcf = @set sampletype(mc) = Float64
 
@@ -108,6 +109,14 @@ end
     @test pvalue(mc2, alt= >=) == pvalue(mc2, Fraction, alt= >=)
     @test pvalue(swap_realval(mc2, 4), alt= >=) ≈ 0.513486  rtol=1e-4
     @test pvalue(swap_realval(mc2, 4), alt= >=) == randomvals(pvalues_all(mc2; alt= >=))[4]
+
+    for alt in [>=, <=]
+        int = pvalue_mcinterval(mc2; alt)
+        p = pvalue(mc2; alt)
+        @test p ∈ int
+        @test p ≈ mean(int)  rtol=0.1
+        @test width(int) ≈ 0.025  rtol=0.1
+    end
 
     mc3 = map_w_params(mc1, grid(n=10:100)) do xs, ps
         mean(xs[1:ps.n])

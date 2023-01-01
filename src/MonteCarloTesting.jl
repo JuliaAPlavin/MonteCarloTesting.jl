@@ -14,7 +14,8 @@ import Random
 export
     montecarlo,
     realval, randomvals, realrandomvals, nrandom, sampletype,
-    Fraction, pvalue, pvalue_tiesinterval, pvalues_all, pvalue_post,
+    Fraction, pvalue, pvalues_all, pvalue_post,
+    pvalue_tiesinterval, pvalue_mcinterval,
     mapsamples, map_w_params,
     swap_realval
 
@@ -267,6 +268,14 @@ function pvalue(mc::MCSamples, mode::Type{Fraction}=Fraction; alt)
     return (nalt + 1) / (n + 1)
 end
 
+function pvalue_mcinterval(mc::MCSamples; alt, nσ=2)
+    @assert sampletype(mc) <: Real
+    @assert alt(realval(mc), realval(mc))
+    nalt = count(r -> alt(r, realval(mc)), randomvals(mc))
+    n = nrandom(mc)
+    return ci_wilson((; x=nalt, n=n); nσ)
+end
+
 function pvalue_tiesinterval(mc::MCSamples; alt)
     @assert sampletype(mc) <: Real
     @assert alt(realval(mc), realval(mc))
@@ -275,6 +284,19 @@ function pvalue_tiesinterval(mc::MCSamples; alt)
     n = nrandom(mc)
     nalt_int = nalt_lo..nalt
     @modify(x -> (x + 1) / (n + 1), nalt_int |> Properties())
+end
+
+# adapted from https://github.com/JuliaStats/HypothesisTests.jl/blob/master/src/binomial.jl
+# Wilson score interval
+function ci_wilson(x; nσ)
+    q = nσ # quantile(Normal(), 1-alpha/2)
+    p = x.x / x.n
+    denominator = 1 + q^2/x.n
+    μ = p + q^2/(2*x.n)
+    μ /= denominator
+    σ = sqrt(p*(1-p)/x.n + q^2/(4x.n^2))
+    σ /= denominator
+    μ ± q*σ
 end
 
 """    pvalues_all(mc::Union{MCSamples, MCSamplesMulti}, [mode::Type=Fraction]; alt)::MCSamples{Real}
