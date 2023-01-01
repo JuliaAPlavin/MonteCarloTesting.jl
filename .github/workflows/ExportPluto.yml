@@ -8,6 +8,7 @@ on:
 
 env:
   SSH_AUTH_SOCK: /tmp/ssh_agent.sock
+  PYTHON:
 
 jobs:
     build-and-deploy:
