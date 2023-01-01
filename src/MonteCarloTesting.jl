@@ -3,7 +3,6 @@ module MonteCarloTesting
 using Requires
 using RectiGrids
 using Statistics: mean
-using Parameters
 using SplitApplyCombine
 using StatsBase: competerank
 using AxisKeysExtra
@@ -92,10 +91,13 @@ function check_randomfunc(randomfunc, rng)
 end
 
 
-@with_kw struct MCSamplesMulti{A <: KeyedArray{<:MCSamples}}
+struct MCSamplesMulti{A <: KeyedArray{<:MCSamples}}
     arr::A
     
-    @assert length(unique(nrandom.(arr))) == 1
+    function MCSamplesMulti(arr)
+        @assert allequal(nrandom.(arr))
+        new{typeof(arr)}(arr)
+    end
 end
 
 nrandom(mcm::MCSamplesMulti) = nrandom(first(mcm.arr))

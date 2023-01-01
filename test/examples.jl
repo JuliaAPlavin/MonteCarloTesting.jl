@@ -271,30 +271,6 @@ pvals = map(1:10^5) do _
 	pvalue(mc; alt= >=)
 end
 
-# ╔═╡ 3ae83929-255f-488e-9100-c2cd3bbacde9
-pvals_trials = map(grid(dep=[:complete, :partial, :none], nrandom=[100], eff=[0, 0.1])) do p
-	alt = >=
-	ThreadsX.map(1:10^4) do _
-		mc = montecarlo(;real=rand(10) .+ p.eff, randomfunc=rng -> rand(rng, 10), p.nrandom)
-		mcp = map_w_params(mc, grid(p=1:10)) do s, pp
-			if p.dep == :complete
-				s[1]
-			elseif p.dep == :partial
-				mean(view(s, 1:pp.p))
-			elseif p.dep == :none
-				s[pp.p]
-			end
-		end
-		(
-			pretrial=minimum(pvalue.(mcp; alt)),
-			harmmean=harmmean(pvalue.(mcp; alt)),
-			posttrial_minimum=pvalue_post(mcp; alt, combine=minimum),
-			posttrial_harmmean=pvalue_post(mcp; alt, combine=harmmean),
-			posttrial_prod=pvalue_post(mcp; alt, combine=prod),
-		)
-	end
-end
-
 # ╔═╡ 2bfa1528-67a9-4ee5-a928-1e8cd365ef36
 function plot_pvals(pvals)
 	common(ax) = let
@@ -329,6 +305,36 @@ end
 # ╔═╡ 3a8e8672-ceee-401d-8953-fed27919e2b2
 plot_pvals(pvals)
 
+# ╔═╡ 8ee73b57-db1f-4c94-89aa-544f1830c531
+
+
+# ╔═╡ 38f499c8-bac1-4583-a414-03ab0f2f71c9
+import ThreadsX
+
+# ╔═╡ 3ae83929-255f-488e-9100-c2cd3bbacde9
+pvals_trials = map(grid(dep=[:complete, :partial, :none], nrandom=[100], eff=[0, 0.1])) do p
+	alt = >=
+	ThreadsX.map(1:10^4) do _
+		mc = montecarlo(;real=rand(10) .+ p.eff, randomfunc=rng -> rand(rng, 10), p.nrandom)
+		mcp = map_w_params(mc, grid(p=1:10)) do s, pp
+			if p.dep == :complete
+				s[1]
+			elseif p.dep == :partial
+				mean(view(s, 1:pp.p))
+			elseif p.dep == :none
+				s[pp.p]
+			end
+		end
+		(
+			pretrial=minimum(pvalue.(mcp; alt)),
+			harmmean=harmmean(pvalue.(mcp; alt)),
+			posttrial_minimum=pvalue_post(mcp; alt, combine=minimum),
+			posttrial_harmmean=pvalue_post(mcp; alt, combine=harmmean),
+			posttrial_prod=pvalue_post(mcp; alt, combine=prod),
+		)
+	end
+end
+
 # ╔═╡ b0ccd5f9-d4cd-4dd7-953d-328abca78ad0
 map([:pretrial, :harmmean, :posttrial_minimum, :posttrial_harmmean, :posttrial_prod]) do k
 	k => map(pvals_trials |> rowtable) do r
@@ -337,12 +343,6 @@ map([:pretrial, :harmmean, :posttrial_minimum, :posttrial_harmmean, :posttrial_p
 		plt.gcf()
 	end
 end
-
-# ╔═╡ 8ee73b57-db1f-4c94-89aa-544f1830c531
-
-
-# ╔═╡ 38f499c8-bac1-4583-a414-03ab0f2f71c9
-# import ThreadsX
 
 # ╔═╡ f18b9502-e6ef-4530-9570-7fea1f1a1572
 TableOfContents()
@@ -361,9 +361,10 @@ RectiGrids = "8ac6971d-971d-971d-971d-971d5ab1a71a"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 Tables = "bd369af6-aec1-5ad0-b16a-f7cc5008161c"
+ThreadsX = "ac1d9e8a-700a-412c-b207-f0111f4b6c0d"
 
 [compat]
-AxisKeysExtra = "~0.1.0"
+AxisKeysExtra = "~0.1.1"
 DataPipes = "~0.2.5"
 DisplayAs = "~0.1.2"
 Distributions = "~0.25.68"
@@ -373,6 +374,7 @@ PyPlotUtils = "~0.1.4"
 RectiGrids = "~0.1.13"
 StatsBase = "~0.33.14"
 Tables = "~1.7.0"
+ThreadsX = "~0.1.10"
 """
 
 # ╔═╡ 00000000-0000-0000-0000-000000000002
@@ -381,7 +383,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.8.0"
 manifest_format = "2.0"
-project_hash = "485c0473a21ed60863da0c71dbff2e6b6b6f2e94"
+project_hash = "007af67b1ede9c371cb7a0a59ec1811f96c99e32"
 
 [[deps.AbstractFFTs]]
 deps = ["ChainRulesCore", "LinearAlgebra"]
@@ -413,6 +415,11 @@ git-tree-sha1 = "195c5505521008abea5aee4f96930717958eac6f"
 uuid = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
 version = "3.4.0"
 
+[[deps.ArgCheck]]
+git-tree-sha1 = "a3a402a35a2f7e0b87828ccabbd5ebfbebe356b4"
+uuid = "dce04be8-c92d-5529-be00-80e4d2c0e197"
+version = "2.3.0"
+
 [[deps.ArgTools]]
 uuid = "0dad84c5-d112-42e6-8d28-ef12dabb789f"
 version = "1.1.1"
@@ -428,12 +435,23 @@ version = "0.2.7"
 
 [[deps.AxisKeysExtra]]
 deps = ["AxisKeys", "Compat", "RectiGrids", "Reexport", "SplitApplyCombine", "StructArrays"]
-git-tree-sha1 = "2d6d9b3fff06c813935122c9af951fbf53b00cd0"
+git-tree-sha1 = "2d063f7dc1610ce3d3641844ce8583ac0b1878cf"
 uuid = "b7a0d2b7-1990-46dc-b5dd-87820ecd1b09"
-version = "0.1.0"
+version = "0.1.1"
+
+[[deps.BangBang]]
+deps = ["Compat", "ConstructionBase", "Future", "InitialValues", "LinearAlgebra", "Requires", "Setfield", "Tables", "ZygoteRules"]
+git-tree-sha1 = "b15a6bc52594f5e4a3b825858d1089618871bf9d"
+uuid = "198e06fe-97b7-11e9-32a5-e1d131e6ad66"
+version = "0.3.36"
 
 [[deps.Base64]]
 uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
+
+[[deps.Baselet]]
+git-tree-sha1 = "aebf55e6d7795e02ca500a689d326ac979aaf89e"
+uuid = "9718e550-a3fa-408a-8086-8db961cd8217"
+version = "0.1.1"
 
 [[deps.Calculus]]
 deps = ["LinearAlgebra"]
@@ -466,10 +484,10 @@ uuid = "5ae59095-9a9b-59fe-a467-6f913c188581"
 version = "0.12.8"
 
 [[deps.Compat]]
-deps = ["Dates", "LinearAlgebra", "UUIDs"]
-git-tree-sha1 = "5856d3031cdb1f3b2b6340dfdc66b6d9a149a374"
+deps = ["Base64", "Dates", "DelimitedFiles", "Distributed", "InteractiveUtils", "LibGit2", "Libdl", "LinearAlgebra", "Markdown", "Mmap", "Pkg", "Printf", "REPL", "Random", "SHA", "Serialization", "SharedArrays", "Sockets", "SparseArrays", "Statistics", "Test", "UUIDs", "Unicode"]
+git-tree-sha1 = "78bee250c6826e1cf805a88b7f1e86025275d208"
 uuid = "34da2185-b29b-5c13-b0c7-acf172513d20"
-version = "4.2.0"
+version = "3.46.0"
 
 [[deps.CompilerSupportLibraries_jll]]
 deps = ["Artifacts", "Libdl"]
@@ -529,6 +547,15 @@ version = "1.0.0"
 [[deps.Dates]]
 deps = ["Printf"]
 uuid = "ade2ca70-3891-5945-98fb-dc099432e06a"
+
+[[deps.DefineSingletons]]
+git-tree-sha1 = "0fba8b706d0178b4dc7fd44a96a92382c9065c2c"
+uuid = "244e2a9f-e319-4986-a169-4d1fe445cd52"
+version = "0.1.2"
+
+[[deps.DelimitedFiles]]
+deps = ["Mmap"]
+uuid = "8bb1440f-4735-579b-a4ab-409b98df4dab"
 
 [[deps.DensityInterface]]
 deps = ["InverseFunctions", "Test"]
@@ -601,6 +628,10 @@ git-tree-sha1 = "335bfdceacc84c5cdf16aadc768aa5ddfc5383cc"
 uuid = "53c48c17-4a7d-5ca2-90c5-79b7896eea93"
 version = "0.8.4"
 
+[[deps.Future]]
+deps = ["Random"]
+uuid = "9fa8497b-333b-5362-9e8d-4d0656e87820"
+
 [[deps.HypergeometricFunctions]]
 deps = ["DualNumbers", "LinearAlgebra", "OpenLibm_jll", "SpecialFunctions", "Test"]
 git-tree-sha1 = "709d864e3ed6e3545230601f94e11ebc65994641"
@@ -629,6 +660,11 @@ version = "0.2.2"
 git-tree-sha1 = "ce1566720fd6b19ff3411404d4b977acd4814f9f"
 uuid = "313cdc1a-70c2-5d6a-ae34-0150d3930a38"
 version = "1.1.1"
+
+[[deps.InitialValues]]
+git-tree-sha1 = "4da0f88e9a39111c2fa3add390ab15f3a44f3ca3"
+uuid = "22cec73e-a1b8-11e9-2c92-598750a2cf9c"
+version = "0.3.1"
 
 [[deps.InteractiveUtils]]
 deps = ["Markdown"]
@@ -733,6 +769,12 @@ uuid = "d6f4376e-aef5-505a-96c1-9c027394607a"
 deps = ["Artifacts", "Libdl"]
 uuid = "c8ffd9c3-330d-5841-b78e-0817d7145fa1"
 version = "2.28.0+0"
+
+[[deps.MicroCollections]]
+deps = ["BangBang", "InitialValues", "Setfield"]
+git-tree-sha1 = "6bb7786e4f24d44b4e29df03c69add1b63d88f01"
+uuid = "128add7d-3638-4c79-886c-908ea0c25c34"
+version = "0.1.2"
 
 [[deps.Missings]]
 deps = ["DataAPI"]
@@ -884,6 +926,12 @@ git-tree-sha1 = "45e428421666073eab6f2da5c9d310d99bb12f9b"
 uuid = "189a3867-3050-52da-a836-e630ba90ab69"
 version = "1.2.2"
 
+[[deps.Referenceables]]
+deps = ["Adapt"]
+git-tree-sha1 = "e681d3bfa49cd46c3c161505caddf20f0e62aaa9"
+uuid = "42d2dcc6-99eb-4e98-b66c-637b7d73030e"
+version = "0.1.2"
+
 [[deps.Requires]]
 deps = ["UUIDs"]
 git-tree-sha1 = "838a3a4188e2ded87a4f9f184b4b0d78a1e91cb7"
@@ -909,6 +957,16 @@ version = "0.7.0"
 [[deps.Serialization]]
 uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
 
+[[deps.Setfield]]
+deps = ["ConstructionBase", "Future", "MacroTools", "Requires"]
+git-tree-sha1 = "38d88503f695eb0301479bc9b0d4320b378bafe5"
+uuid = "efcf1570-3423-57d1-acb7-fd33fddbac46"
+version = "0.8.2"
+
+[[deps.SharedArrays]]
+deps = ["Distributed", "Mmap", "Random", "Serialization"]
+uuid = "1a1011a3-84de-559e-8e89-a11a2f7dc383"
+
 [[deps.Sockets]]
 uuid = "6462fe0b-24de-5631-8697-dd941f90decc"
 
@@ -933,6 +991,12 @@ deps = ["Dictionaries", "Indexing"]
 git-tree-sha1 = "48f393b0231516850e39f6c756970e7ca8b77045"
 uuid = "03a91e81-4c3e-53e1-a0a4-9c0c8f19dd66"
 version = "1.2.2"
+
+[[deps.SplittablesBase]]
+deps = ["Setfield", "Test"]
+git-tree-sha1 = "39c9f91521de844bad65049efd4f9223e7ed43f9"
+uuid = "171d559e-b47b-412a-8079-5efa626c420e"
+version = "0.1.14"
 
 [[deps.StaticArrays]]
 deps = ["LinearAlgebra", "Random", "StaticArraysCore", "Statistics"]
@@ -1003,6 +1067,18 @@ version = "1.10.0"
 deps = ["InteractiveUtils", "Logging", "Random", "Serialization"]
 uuid = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
+[[deps.ThreadsX]]
+deps = ["ArgCheck", "BangBang", "ConstructionBase", "InitialValues", "MicroCollections", "Referenceables", "Setfield", "SplittablesBase", "Transducers"]
+git-tree-sha1 = "d223de97c948636a4f34d1f84d92fd7602dc555b"
+uuid = "ac1d9e8a-700a-412c-b207-f0111f4b6c0d"
+version = "0.1.10"
+
+[[deps.Transducers]]
+deps = ["Adapt", "ArgCheck", "BangBang", "Baselet", "CompositionsBase", "DefineSingletons", "Distributed", "InitialValues", "Logging", "Markdown", "MicroCollections", "Requires", "Setfield", "SplittablesBase", "Tables"]
+git-tree-sha1 = "c76399a3bbe6f5a88faa33c8f8a65aa631d95013"
+uuid = "28d57a85-8fef-5791-bfe6-a80928e7c999"
+version = "0.4.73"
+
 [[deps.Tricks]]
 git-tree-sha1 = "6bac775f2d42a611cdfcd1fb217ee719630c4175"
 uuid = "410a4b4d-49e4-4fbc-ab6d-cb71b17b3775"
@@ -1035,6 +1111,12 @@ version = "1.3.0"
 deps = ["Libdl"]
 uuid = "83775a58-1f1d-513f-b197-d71354ab007a"
 version = "1.2.12+3"
+
+[[deps.ZygoteRules]]
+deps = ["MacroTools"]
+git-tree-sha1 = "8c1a8e4dfacb1fd631745552c8db35d0deb09ea0"
+uuid = "700de1a5-db45-46bc-99cf-38207098b444"
+version = "0.2.2"
 
 [[deps.libblastrampoline_jll]]
 deps = ["Artifacts", "Libdl", "OpenBLAS_jll"]
