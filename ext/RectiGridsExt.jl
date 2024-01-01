@@ -98,7 +98,7 @@ function map_w_params(f, mcm::MCSamplesMulti; mapfunc=map)
     end |> stack
 end
 
-function pvalues_all(mcm::MCSamplesMulti, mode=Fraction; alt=alt(mc))
+function pvalues_all(mcm::MCSamplesMulti, mode=Fraction; alt=alt(mcm))
     map(mcm) do mc
         pvalues_all(mc, mode; alt)
     end
@@ -111,7 +111,7 @@ Compute the so-called _post-trial_ p-value. That's an estimate of the probabilit
 `alt`: specification of the alternative hypothesis, passed as-is to `pvalue()`.
 `combine`: experimental.
 """
-function pvalue_post(mcm::MCSamplesMulti; alt=alt(mc), combine=minimum)
+function pvalue_post(mcm::MCSamplesMulti; alt=alt(mcm), combine=minimum)
     # pvalue for each realization and parameter value:
     ps_all = pvalues_all(mcm; alt)
     # test statistics for each realization:
