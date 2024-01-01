@@ -1,6 +1,5 @@
 module MonteCarloTesting
 
-using Requires
 using RectiGrids
 using FlexiMaps: mapview
 using StatsBase: competerank
@@ -19,25 +18,6 @@ export
     pvalue_tiesinterval, pvalue_mcinterval,
     mapsamples, map_w_params,
     swap_realval
-
-
-function __init__()
-    @require Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f" begin
-        using .Distributions: fit, cdf, ccdf, quantile, Poisson, Normal
-
-        function pvalue(mc::MCSamples, mode::Type{Poisson}; alt)
-            @assert sampletype(mc) <: Real
-            dist = fit(Poisson, randomvals(mc))
-            return alt == (>=) ? ccdf(dist, realval(mc) - 1) :
-                   alt == (<=) ?  cdf(dist, realval(mc)) :
-                   @assert false
-        end
-
-        nσ(p::PValue) = quantile(Normal(0, 1), 1-p.p/2)
-        _nσ_str(p::PValue) = "$(round(nσ(p), digits=1))σ"
-    end
-end
-
 
 struct PValue
     p::Float64
