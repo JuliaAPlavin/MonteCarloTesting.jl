@@ -75,9 +75,10 @@ function map_w_params(f, mcs::MCSamples; mapfunc=map)
     end
     axks = named_axiskeys(realval(mc_tmp))
     @assert all(A -> named_axiskeys(A) == axks, randomvals(mc_tmp))
-    map(grid(;axks...)) do pars
+    G = grid(;axks...)
+    map(eachindex(G), G) do ip, _
         mapsamples(mc_tmp) do ss
-            ss(;pars...)
+            ss[ip]
         end
     end
 end
@@ -90,9 +91,10 @@ function map_w_params(f, mcm::MCSamplesMulti; mapfunc=map)
         end
         axks = named_axiskeys(realval(mc_tmp))
         @assert all(A -> named_axiskeys(A) == axks, randomvals(mc_tmp))
-        map(grid(;axks...)) do pars
+        G = grid(;axks...)
+        map(eachindex(G), G) do ip, _
             mapsamples(mc_tmp) do ss
-                ss(;pars...)
+                ss[ip]
             end
         end
     end |> stack

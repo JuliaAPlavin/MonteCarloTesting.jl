@@ -80,6 +80,17 @@ using Test
         @test pvalue_mcinterval.(mc2a)[1] == 0.5577894550965302..0.9806720833650083
     end
 
+    mc3 = map_w_params(mc, grid(int=[0..1, 1..2, 2..3])) do x, p
+        x ∈ p.int
+    end
+    @test realval.(mc3) == [true, false, false]
+    mc3 = map_w_params(mc) do x, _
+        map(grid(int=[0..1, 1..2, 2..3])) do p
+            x ∈ p.int
+        end
+    end
+    @test realval.(mc3) == [true, false, false]
+
     @test_throws TypeError montecarlo(real=1, random=Any[2, 3, 4])
 end
 
