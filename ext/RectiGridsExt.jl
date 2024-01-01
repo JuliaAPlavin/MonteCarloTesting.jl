@@ -12,14 +12,19 @@ import MonteCarloTesting:
 
 const MCSamplesMulti{T} = KeyedArray{T} where {T<:MCSamples}
 
-nrandom(mcm::MCSamplesMulti) = nrandom(first(mcm))
-#         @assert allequal(nrandom.(arr))
+function nrandom(mcm::MCSamplesMulti)
+    @assert allequal(nrandom.(mcm))
+    nrandom(first(mcm))
+end
 
 sampletype(::Type{<:MCSamplesMulti{A}}) where {A} = sampletype(A)
 sampletype(mc::MCSamplesMulti) = sampletype(eltype(mc))
 Accessors.set(mc::MCSamplesMulti, ::typeof(sampletype), ::Type{T}) where {T} = @set mc |> Elements() |> sampletype = T
 
-alt(mcm::MCSamplesMulti) = alt(first(mcm))
+function alt(mcm::MCSamplesMulti)
+    @assert allequal(alt.(mcm))
+    alt(first(mcm))
+end
 Accessors.set(mcm::MCSamplesMulti, ::typeof(alt), v) = @set mcm |> Elements() |> alt = v
 
 function mapsamples(f, mcm::MCSamplesMulti; mapfunc=map)
