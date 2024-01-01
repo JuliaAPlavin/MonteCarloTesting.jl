@@ -147,36 +147,10 @@ A benefit of simulation testing here is that it directly generalizes with little
 For this example, we craft the measured dataset so that there is some clustering.
 """
 
-# ╔═╡ f0318549-27ee-4f8e-9f21-cd667e69745f
-mc_vec = montecarlo(;
-	real=clamp.([rand(Normal(0.1, 0.05), 20); rand(Normal(0.5, 0.05), 20); rand(Uniform(0, 1), 60)], Ref(0..1)),
-	randomfunc=rng -> rand(rng, 100),
-	nrandom=10^4-1
-)
-
 # ╔═╡ 0bd6accd-415d-4097-862c-89ebcfaf3ccd
 md"""
 Visualize real measurements and a few random realization:
 """
-
-# ╔═╡ ee5e67c8-8394-4b85-b655-092cb94779aa
-let
-	plt.figure(figsize=(6, 2))
-	let v = realval(mc_vec)
-		plt.scatter(v, fill(0, length(v)), marker="|", color=:k)
-	end
-	for i in 1:5
-		v = randomvals(mc_vec)[i]
-		plt.scatter(v, fill(i, length(v)), marker="|")
-	end
-	plt.yticks(
-		0:5,
-		[["Real"]; ["Rand #$i" for i in 1:5]]
-	)
-	plt.gca().invert_yaxis()
-	plt.xlim(0, 1)
-	plt.gcf()
-end
 
 # ╔═╡ 4d5ad9d1-2b12-4cd3-a4c1-c304017b089e
 md"""
@@ -187,17 +161,6 @@ Some clustering is apparent, but the question is how significant --- what's the 
 md"""
 First, suppose we are interested in clustering at the fixed scale of $0.1$. Let's take the fraction of pairs closer than $0.1$ as the test statistic:
 """
-
-# ╔═╡ 59fdf6d8-7eea-45bf-b787-665ef17147ef
-mc_close01 = mapsamples(mc_vec) do xs
-	mean(
-		((x, y),) -> abs(x - y) < 0.1,
-		Iterators.product(xs, xs)
-	)
-end
-
-# ╔═╡ 61d04ccc-36a6-431e-9c09-06be4e07fa33
-pvalue(mc_close01, alt= >=)
 
 # ╔═╡ 71e2becb-e482-485a-992c-975c8744ea97
 md"""
@@ -257,7 +220,7 @@ All p-values we obtained so far are demonstrated in this plot:
 
 # ╔═╡ d1835c86-350d-491f-96ff-126216fae9f8
 md"""
-Here, the region around the minimum is flat in the scan, indicating that more random realization could better resolve those p-values. See the `nrandom` argument to `montecarlo(...)`.
+Here, the minimum reaches $10^{-4} = 1/N_\mathrm{random}$, indicating that more random realization could better resolve those p-values. See the `nrandom` argument to `montecarlo(...)`.
 """
 
 # ╔═╡ 1ac62ca5-bb62-4da9-98d3-14689d96ce04
@@ -326,6 +289,88 @@ plot_pvals(pvals)
 # ╔═╡ 38f499c8-bac1-4583-a414-03ab0f2f71c9
 import ThreadsX
 
+# ╔═╡ 3ae83929-255f-488e-9100-c2cd3bbacde9
+pvals_trials = map(grid(dep=[:complete, :partial, :none], nrandom=[100], eff=[0, 0.1])) do p
+	alt = >=
+	ThreadsX.map(1:10^4) do _
+		mc = montecarlo(;real=rand(10) .+ p.eff, randomfunc=rng -> rand(rng, 10), p.nrandom)
+		mcp = map_w_params(mc, grid(p=1:10)) do s, pp
+			if p.dep == :complete
+				s[1]
+			elseif p.dep == :partial
+				mean(view(s, 1:pp.p))
+			elseif p.dep == :none
+				s[pp.p]
+			end
+		end
+		(
+			pretrial=minimum(pvalue.(mcp; alt)),
+			harmmean=harmmean(pvalue.(mcp; alt)),
+			posttrial_minimum=pvalue_post(mcp; alt, combine=minimum),
+			posttrial_harmmean=pvalue_post(mcp; alt, combine=harmmean),
+			posttrial_prod=pvalue_post(mcp; alt, combine=prod),
+		)
+	end
+end;
+
+# ╔═╡ 58be6aa4-43b0-4dd0-bc9d-fd6ff927e11d
+pvals_trials |> AsText
+
+# ╔═╡ b0ccd5f9-d4cd-4dd7-953d-328abca78ad0
+map([:pretrial, :harmmean, :posttrial_minimum, :posttrial_harmmean, :posttrial_prod]) do k
+	k => map(pvals_trials |> rowtable) do r
+		plot_pvals(getproperty.(r.value, k))
+		plt.title("dep: $(r.dep)")
+		plt.gcf()
+	end
+end
+
+# ╔═╡ f18b9502-e6ef-4530-9570-7fea1f1a1572
+TableOfContents()
+
+# ╔═╡ e31adc26-70af-4b78-a2af-134915e55f71
+import Random
+
+# ╔═╡ f0318549-27ee-4f8e-9f21-cd667e69745f
+mc_vec = let
+	Random.seed!(123)
+	montecarlo(;
+		real=clamp.([rand(Normal(0.1, 0.05), 20); rand(Normal(0.5, 0.05), 20); rand(Uniform(0, 1), 60)], Ref(0..1)),
+		randomfunc=rng -> rand(rng, 100),
+		nrandom=10^4-1,
+	)
+end
+
+# ╔═╡ ee5e67c8-8394-4b85-b655-092cb94779aa
+let
+	plt.figure(figsize=(6, 2))
+	let v = realval(mc_vec)
+		plt.scatter(v, fill(0, length(v)), marker="|", color=:k)
+	end
+	for i in 1:5
+		v = randomvals(mc_vec)[i]
+		plt.scatter(v, fill(i, length(v)), marker="|")
+	end
+	plt.yticks(
+		0:5,
+		[["Real"]; ["Rand #$i" for i in 1:5]]
+	)
+	plt.gca().invert_yaxis()
+	plt.xlim(0, 1)
+	plt.gcf()
+end
+
+# ╔═╡ 59fdf6d8-7eea-45bf-b787-665ef17147ef
+mc_close01 = mapsamples(mc_vec) do xs
+	mean(
+		((x, y),) -> abs(x - y) < 0.1,
+		Iterators.product(xs, xs)
+	)
+end
+
+# ╔═╡ 61d04ccc-36a6-431e-9c09-06be4e07fa33
+pvalue(mc_close01, alt= >=)
+
 # ╔═╡ d00aab47-550c-4a1a-ae81-a5980a53368b
 mc_close = map_w_params(mc_vec, grid(scale=0:0.02:1); mapfunc=ThreadsX.map) do xs, p
 	mean(
@@ -389,45 +434,6 @@ end
 # ╔═╡ 2bd0b39b-8ce4-4661-adac-059e31153503
 pvalue_post(mc_close; alt= >=, combine=harmmean)
 
-# ╔═╡ 3ae83929-255f-488e-9100-c2cd3bbacde9
-pvals_trials = map(grid(dep=[:complete, :partial, :none], nrandom=[100], eff=[0, 0.1])) do p
-	alt = >=
-	ThreadsX.map(1:10^4) do _
-		mc = montecarlo(;real=rand(10) .+ p.eff, randomfunc=rng -> rand(rng, 10), p.nrandom)
-		mcp = map_w_params(mc, grid(p=1:10)) do s, pp
-			if p.dep == :complete
-				s[1]
-			elseif p.dep == :partial
-				mean(view(s, 1:pp.p))
-			elseif p.dep == :none
-				s[pp.p]
-			end
-		end
-		(
-			pretrial=minimum(pvalue.(mcp; alt)),
-			harmmean=harmmean(pvalue.(mcp; alt)),
-			posttrial_minimum=pvalue_post(mcp; alt, combine=minimum),
-			posttrial_harmmean=pvalue_post(mcp; alt, combine=harmmean),
-			posttrial_prod=pvalue_post(mcp; alt, combine=prod),
-		)
-	end
-end;
-
-# ╔═╡ 58be6aa4-43b0-4dd0-bc9d-fd6ff927e11d
-pvals_trials |> AsText
-
-# ╔═╡ b0ccd5f9-d4cd-4dd7-953d-328abca78ad0
-map([:pretrial, :harmmean, :posttrial_minimum, :posttrial_harmmean, :posttrial_prod]) do k
-	k => map(pvals_trials |> rowtable) do r
-		plot_pvals(getproperty.(r.value, k))
-		plt.title("dep: $(r.dep)")
-		plt.gcf()
-	end
-end
-
-# ╔═╡ f18b9502-e6ef-4530-9570-7fea1f1a1572
-TableOfContents()
-
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
@@ -438,6 +444,7 @@ Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 MonteCarloTesting = "b75b2f39-c526-438a-aeb3-f18deacfdc57"
 PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 PyPlotUtils = "5384e752-6c47-47b3-86ac-9d091b110b31"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 RectiGrids = "8ac6971d-971d-971d-971d-971d5ab1a71a"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
@@ -464,7 +471,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.9.0-beta4"
 manifest_format = "2.0"
-project_hash = "e5df011f3be0060c6e7e65924dbf82a020d57856"
+project_hash = "6b37c5fef002b7ed81b69c0546e14db4ce529279"
 
 [[deps.AbstractFFTs]]
 deps = ["ChainRulesCore", "LinearAlgebra"]
@@ -1319,5 +1326,6 @@ version = "17.4.0+0"
 # ╠═f51f284d-1669-4f6c-a128-0e0ec911ac82
 # ╠═ef34f91c-c8cb-4d28-9257-e4d95c828275
 # ╠═a39e055d-7c16-4ada-9ac1-8981be6b2c5c
+# ╠═e31adc26-70af-4b78-a2af-134915e55f71
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
