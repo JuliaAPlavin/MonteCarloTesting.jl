@@ -149,15 +149,17 @@ end
     @test realval.(mc4)(n=10) ≈ 0.504545^2  rtol=1e-4
     @test pvalue.(mc4, alt= >=) == pvalue.(mc3, alt= >=)
 
-    mc5 = map_w_params(mc3, grid(p=2:4, mul=0.1:0.1:2)) do x, ps
-        @assert 10 <= ps.n <= 100
-        ps.mul * x^ps.p
+    if VERSION >= v"1.9-DEV"
+        mc5 = map_w_params(mc3, grid(p=2:4, mul=0.1:0.1:2)) do x, ps
+            @assert 10 <= ps.n <= 100
+            ps.mul * x^ps.p
+        end
+        @test nrandom(mc5) == 1000
+        @test minimum(pvalue.(mc5; alt= >=)) ≈ 0.039960  rtol=1e-4
+        @test pvalue_post(mc5; alt= >=) ≈ 0.206793  rtol=1e-4
+        @test minimum(pvalue.(mc5(n= >=(90)); alt= >=)) ≈ 0.039960  rtol=1e-4
+        @test pvalue_post(mc5(n= >=(90)); alt= >=) ≈ 0.060939  rtol=1e-4
     end
-    @test nrandom(mc5) == 1000
-    @test minimum(pvalue.(mc5; alt= >=)) ≈ 0.039960  rtol=1e-4
-    @test pvalue_post(mc5; alt= >=) ≈ 0.206793  rtol=1e-4
-    @test minimum(pvalue.(mc5(n= >=(90)); alt= >=)) ≈ 0.039960  rtol=1e-4
-    @test pvalue_post(mc5(n= >=(90)); alt= >=) ≈ 0.060939  rtol=1e-4
 end
 
 @testset "different pvalues" begin

@@ -5,7 +5,7 @@ using RectiGrids
 using Statistics: mean
 using FlexiMaps: mapview
 using StatsBase: competerank
-using AxisKeysExtra
+using AxisKeys
 using IntervalSets
 using Accessors
 using ConstructionBaseExtras  # for IntervalSets
