@@ -233,6 +233,56 @@ md"""
 Note that the combination function needs to be decided beforehand, not after looking at computation results.
 """
 
+# ╔═╡ 164222d0-2676-49df-ab70-8e86ea912c6d
+md"""
+### P-value intervals
+"""
+
+# ╔═╡ b7e4b2ff-45ec-413f-b3b5-e00084dd40a8
+md"""
+#### Uncertainty due to randomness
+"""
+
+# ╔═╡ 6663f2d0-d026-4437-96e8-48e71f02d620
+md"""
+`MonteCarloTesting` also provides basic tools to evaluate the accuracy of obtained p-values. Uncertainties arise from the inherent randomness of simulations.
+
+Use `pvalue_mcinterval()` instead of `pvalue()` to compute the binomial uncertainty interval, at the 95% level by default:
+"""
+
+# ╔═╡ c56e4af7-d44d-42fe-922f-6d07d1fa9296
+md"""
+With p-value this small, comparable with $1/N_\mathrm{random}$, the relative uncertainty is quite large. It can be improved with more random realizations (`nrandom` argument).
+"""
+
+# ╔═╡ a77b95d3-3d7e-44d5-bed4-1e95b0bb0e85
+md"""
+This plot illustrates confidence intervals for the whole scan:
+"""
+
+# ╔═╡ 1350a0b4-c683-4987-8239-1691a464e899
+md"""
+#### Ties in the test statistic values
+"""
+
+# ╔═╡ bb9f7d85-6922-45b7-abc3-d8efc49e60f9
+md"""
+When the test statistic is discrete, it can only assume a finite number of values.\
+This is the case in our example: we count the number of pairs. It can be informative to understand, how much this discreteness affects p-value estimates.
+
+The `pvalue_tiesinterval` function calculates the interval where discreteness doesn't allow resolving finer details:
+"""
+
+# ╔═╡ 7863463b-7045-4731-b570-6db000ee3149
+md"""
+Visualization for the whole scan:
+"""
+
+# ╔═╡ 9c1f440c-e8eb-44a4-9b60-15504cd7ec31
+md"""
+Here, the ties interval is narrow in our region of interest. If that wasn't the case, thinking of a different test statistic could be useful.
+"""
+
 # ╔═╡ 7fbd73a1-95a2-42f5-bf9c-6d4eec5a9119
 md"""
 ## Evaluating p-value correctness and more
@@ -371,8 +421,20 @@ end
 # ╔═╡ 61d04ccc-36a6-431e-9c09-06be4e07fa33
 pvalue(mc_close01, alt= >=)
 
+# ╔═╡ d9da774b-e3c9-4688-b9c4-15d80745f4d1
+mcint = pvalue_mcinterval(mc_close01, alt= >=)
+
+# ╔═╡ 742944d6-6fd1-405b-a385-72f301c285bd
+maximum(mcint) / minimum(mcint)
+
+# ╔═╡ 73d237f6-fbc0-4387-b83c-50b6dd81b111
+mean(mcint), 1/nrandom(mc_close01)
+
+# ╔═╡ 9435477e-08cd-47fe-88f2-4b74fb75305f
+pvalue_tiesinterval(mc_close01, alt= >=)
+
 # ╔═╡ d00aab47-550c-4a1a-ae81-a5980a53368b
-mc_close = map_w_params(mc_vec, grid(scale=0:0.02:1); mapfunc=ThreadsX.map) do xs, p
+mc_close = map_w_params(mc_vec, grid(scale=0:0.01:1); mapfunc=ThreadsX.map) do xs, p
 	mean(
 		((x, y),) -> abs(x - y) < p.scale,
 		Iterators.product(xs, xs)
@@ -416,7 +478,7 @@ let
 
 	let (p, k) = with_axiskeys(findmin)(pvals_close)
 		plt.scatter(k.scale, p; color=:C0)
-		plt.text(k.scale, p, "   minimum in scan", va=:center)
+		plt.text(k.scale, p, "   minimum in scan", va=:center, color=:C0)
 	end
 
 	# plt.scatter(1, pvalue_post(mc_close; alt= >=), marker="_", color=:C1, s=0.3e3, clip_on=false, label="Parameter scan\n(post-trial)")
@@ -433,6 +495,48 @@ end
 
 # ╔═╡ 2bd0b39b-8ce4-4661-adac-059e31153503
 pvalue_post(mc_close; alt= >=, combine=harmmean)
+
+# ╔═╡ 6d12367e-b320-4b23-9608-4b1b6c41c968
+let
+	plt.figure()
+	plot_ax(pvals_close; label="Parameter scan\n(pre-trial)")
+	fill_between_ax(pvalue_mcinterval.(mc_close, alt= >=); alpha=0.3, edgecolor=:C0, lw=1)
+
+	let scale = 0.1
+		p = pvalue_mcinterval(mc_close01, alt = >=)
+		errorbar(0.1, p; color=:k, fmt=".")
+		plt.text(0.1, mean(p), "  scale = 0.1, no scan", va=:center)
+	end
+	
+	plt.yscale(:log)
+	plt.xlim(0, 1)
+	xylabels("Clustering scale", "p-value")
+
+	legend_inline_right()
+	
+	plt.gcf()
+end
+
+# ╔═╡ a50b5689-d186-4adb-b7c4-390270fb40ee
+let
+	plt.figure()
+	plot_ax(pvals_close; label="Parameter scan\n(pre-trial)")
+	fill_between_ax(pvalue_tiesinterval.(mc_close, alt= >=); alpha=0.3, edgecolor=:C0, lw=1)
+
+	let scale = 0.1
+		p = pvalue_tiesinterval(mc_close01, alt = >=)
+		errorbar(0.1, p; color=:k, fmt=".")
+		plt.text(0.1, mean(p), "  scale = 0.1, no scan", va=:center)
+	end
+	
+	plt.yscale(:log)
+	plt.xlim(0, 1)
+	xylabels("Clustering scale", "p-value")
+
+	legend_inline_right()
+	
+	plt.gcf()
+end
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -457,8 +561,8 @@ DataPipes = "~0.3.5"
 DisplayAs = "~0.1.6"
 Distributions = "~0.25.80"
 MonteCarloTesting = "~0.1.16"
-PlutoUI = "~0.7.49"
-PyPlotUtils = "~0.1.25"
+PlutoUI = "~0.7.50"
+PyPlotUtils = "~0.1.26"
 RectiGrids = "~0.1.17"
 StatsBase = "~0.33.21"
 Tables = "~1.10.0"
@@ -721,9 +825,9 @@ uuid = "9fa8497b-333b-5362-9e8d-4d0656e87820"
 
 [[deps.GPUArraysCore]]
 deps = ["Adapt"]
-git-tree-sha1 = "57f7cde02d7a53c9d1d28443b9f11ac5fbe7ebc9"
+git-tree-sha1 = "1cd7f0af1aa58abc02ea1d872953a97359cb87fa"
 uuid = "46192b85-c4d5-4398-a991-12ede77f4527"
-version = "0.1.3"
+version = "0.1.4"
 
 [[deps.HypergeometricFunctions]]
 deps = ["DualNumbers", "LinearAlgebra", "OpenLibm_jll", "SpecialFunctions", "Test"]
@@ -965,9 +1069,9 @@ version = "0.11.16"
 
 [[deps.Parsers]]
 deps = ["Dates", "SnoopPrecompile"]
-git-tree-sha1 = "946b56b2135c6c10bbb93efad8a78b699b6383ab"
+git-tree-sha1 = "6f4fbcd1ad45905a5dee3f4256fabb49aa2110c6"
 uuid = "69de0a69-1ddd-5017-9359-2bf0b02dc9f0"
-version = "2.5.6"
+version = "2.5.7"
 
 [[deps.Pkg]]
 deps = ["Artifacts", "Dates", "Downloads", "FileWatching", "LibGit2", "Libdl", "Logging", "Markdown", "Printf", "REPL", "Random", "SHA", "Serialization", "TOML", "Tar", "UUIDs", "p7zip_jll"]
@@ -976,9 +1080,9 @@ version = "1.9.0"
 
 [[deps.PlutoUI]]
 deps = ["AbstractPlutoDingetjes", "Base64", "ColorTypes", "Dates", "FixedPointNumbers", "Hyperscript", "HypertextLiteral", "IOCapture", "InteractiveUtils", "JSON", "Logging", "MIMEs", "Markdown", "Random", "Reexport", "URIs", "UUIDs"]
-git-tree-sha1 = "eadad7b14cf046de6eb41f13c9275e5aa2711ab6"
+git-tree-sha1 = "5bb5129fdd62a2bbbe17c2756932259acf467386"
 uuid = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
-version = "0.7.49"
+version = "0.7.50"
 
 [[deps.Preferences]]
 deps = ["TOML"]
@@ -1003,10 +1107,19 @@ uuid = "d330b81b-6aea-500a-939a-2ce795aea3ee"
 version = "2.11.0"
 
 [[deps.PyPlotUtils]]
-deps = ["Accessors", "AxisKeys", "Colors", "DataPipes", "DirectionalStatistics", "DomainSets", "FlexiMaps", "IntervalSets", "LinearAlgebra", "NonNegLeastSquares", "PyCall", "PyPlot", "Statistics", "StatsBase", "Unitful"]
-git-tree-sha1 = "0654b4fa81561925f80da1615eaf1e1c57c514a8"
+deps = ["Accessors", "ColorTypes", "DataPipes", "DirectionalStatistics", "DomainSets", "FlexiMaps", "IntervalSets", "LinearAlgebra", "NonNegLeastSquares", "PyCall", "PyPlot", "Statistics", "StatsBase"]
+git-tree-sha1 = "0db936b203ca7f348b54c444b2503363b94e4e2f"
 uuid = "5384e752-6c47-47b3-86ac-9d091b110b31"
-version = "0.1.25"
+version = "0.1.26"
+
+    [deps.PyPlotUtils.extensions]
+    AxisKeysExt = "AxisKeys"
+    AxisKeysUnitfulExt = ["AxisKeys", "Unitful"]
+    UnitfulExt = "Unitful"
+
+    [deps.PyPlotUtils.weakdeps]
+    AxisKeys = "94b1ba4f-4ee9-5380-92f1-94cde586c3c5"
+    Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 
 [[deps.QuadGK]]
 deps = ["DataStructures", "LinearAlgebra"]
@@ -1109,9 +1222,9 @@ version = "0.1.15"
 
 [[deps.StaticArrays]]
 deps = ["LinearAlgebra", "Random", "StaticArraysCore", "Statistics"]
-git-tree-sha1 = "cee507162ecbb677450f20058ca83bd559b6b752"
+git-tree-sha1 = "67d3e75e8af8089ea34ce96974d5468d4a008ca6"
 uuid = "90137ffa-7385-5640-81b9-e52037218182"
-version = "1.5.14"
+version = "1.5.15"
 
 [[deps.StaticArraysCore]]
 git-tree-sha1 = "6b7ba252635a5eff6a0b0664a41ee140a1c9e72a"
@@ -1200,9 +1313,9 @@ uuid = "410a4b4d-49e4-4fbc-ab6d-cb71b17b3775"
 version = "0.1.6"
 
 [[deps.URIs]]
-git-tree-sha1 = "ac00576f90d8a259f2c9d823e91d1de3fd44d348"
+git-tree-sha1 = "074f993b0ca030848b897beff716d93aca60f06a"
 uuid = "5c2747f8-b7ea-4ff2-ba2e-563bfd36b1d4"
-version = "1.4.1"
+version = "1.4.2"
 
 [[deps.UUIDs]]
 deps = ["Random", "SHA"]
@@ -1210,12 +1323,6 @@ uuid = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 
 [[deps.Unicode]]
 uuid = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
-
-[[deps.Unitful]]
-deps = ["ConstructionBase", "Dates", "LinearAlgebra", "Random"]
-git-tree-sha1 = "d3f95a76c89777990d3d968ded5ecf12f9a0ad72"
-uuid = "1986cc42-f94f-5a68-af5c-568840ba703d"
-version = "1.12.3"
 
 [[deps.VersionParsing]]
 git-tree-sha1 = "58d6e80b4ee071f5efd07fda82cb9fbe17200868"
@@ -1304,6 +1411,21 @@ version = "17.4.0+0"
 # ╟─1ac62ca5-bb62-4da9-98d3-14689d96ce04
 # ╠═2bd0b39b-8ce4-4661-adac-059e31153503
 # ╟─f699be96-8192-49ac-a425-301607c4934a
+# ╟─164222d0-2676-49df-ab70-8e86ea912c6d
+# ╟─b7e4b2ff-45ec-413f-b3b5-e00084dd40a8
+# ╟─6663f2d0-d026-4437-96e8-48e71f02d620
+# ╠═d9da774b-e3c9-4688-b9c4-15d80745f4d1
+# ╟─c56e4af7-d44d-42fe-922f-6d07d1fa9296
+# ╠═742944d6-6fd1-405b-a385-72f301c285bd
+# ╠═73d237f6-fbc0-4387-b83c-50b6dd81b111
+# ╟─a77b95d3-3d7e-44d5-bed4-1e95b0bb0e85
+# ╟─6d12367e-b320-4b23-9608-4b1b6c41c968
+# ╟─1350a0b4-c683-4987-8239-1691a464e899
+# ╟─bb9f7d85-6922-45b7-abc3-d8efc49e60f9
+# ╠═9435477e-08cd-47fe-88f2-4b74fb75305f
+# ╟─7863463b-7045-4731-b570-6db000ee3149
+# ╟─a50b5689-d186-4adb-b7c4-390270fb40ee
+# ╟─9c1f440c-e8eb-44a4-9b60-15504cd7ec31
 # ╟─7fbd73a1-95a2-42f5-bf9c-6d4eec5a9119
 # ╟─48c90289-6c64-4906-bc3d-c7d0c9411c34
 # ╠═6f2f83f1-d40f-4e90-9c78-110bffa4d17c
