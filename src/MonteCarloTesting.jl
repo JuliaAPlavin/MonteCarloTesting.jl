@@ -64,7 +64,6 @@ end
 "    realval(mc::MCSamples{T})::T
 The real value of `MCSamples`. "
 realval(mc::MCSamples) = mc.real
-
 Accessors.set(mc::MCSamples, ::typeof(realval), v) = @set mc.real = v
 
 "    nrandom(mc::MCSamples)::Int
@@ -74,6 +73,7 @@ nrandom(mc::MCSamples) = length(randomvals(mc))
 "    randomvals(mc::MCSamples{T})::AbstractVector{T}
 Array of random realizations in `MCSamples`. Can be eager or lazily computed. "
 randomvals(mc::MCSamples) = mc.random
+Accessors.set(mc::MCSamples, ::typeof(randomvals), v) = @set mc.random = v
 
 "    realrandomvals(mc::MCSamples{T})::AbstractVector{T}
 Array containing both the real value and random realizations from `MCSamples`. "

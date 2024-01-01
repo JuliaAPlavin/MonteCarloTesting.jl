@@ -23,6 +23,10 @@ using Test
     @test pvalue(mc; alt= <=) == 0.8
     @test pvalue_mcinterval(mc; alt= >=) == 0.5577894550965302..0.9806720833650083
 
+    Accessors.test_getset_laws(sampletype, mc, Float64, Int)
+    Accessors.test_getset_laws(realval, mc, 5, 2)
+    Accessors.test_getset_laws(first ∘ randomvals, mc, 1, 2)
+
     let mcf = @set sampletype(mc) = Float64
 
         @test pvalue(@set(realval(mcf) = -0.1); alt= >=) == 0.9
