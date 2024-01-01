@@ -119,42 +119,16 @@ function check_randomfunc(randomfunc, rng)
 end
 
 
-struct MCSamplesMulti{A <: KeyedArray{<:MCSamples}}
-    arr::A
-    
-    function MCSamplesMulti(arr)
-        @assert allequal(nrandom.(arr))
-        new{typeof(arr)}(arr)
-    end
-end
+const MCSamplesMulti{T} = KeyedArray{T} where {T<:MCSamples}
 
-Base.:(==)(a::MCSamplesMulti, b::MCSamplesMulti) = a.arr == b.arr
-
-nrandom(mcm::MCSamplesMulti) = nrandom(first(mcm.arr))
-
-Base.iterate(mcm::MCSamplesMulti, args...) = iterate(mcm.arr, args...)
-Base.broadcastable(mcm::MCSamplesMulti) = mcm.arr
-Base.size(mcm::MCSamplesMulti) = size(mcm.arr)
-Base.parent(mcm::MCSamplesMulti) = mcm.arr
-AxisKeys.dimnames(mcm::MCSamplesMulti, args...) = dimnames(mcm.arr, args...)
-AxisKeys.axiskeys(mcm::MCSamplesMulti, args...) = axiskeys(mcm.arr, args...)
-AxisKeys.named_axiskeys(mcm::MCSamplesMulti, args...) = named_axiskeys(mcm.arr, args...)
-
-function Base.getindex(mcm::MCSamplesMulti, I...)
-    data = mcm.arr[I...]
-    data isa MCSamples ? data : MCSamplesMulti(data)
-end
-
-function (mcm::MCSamplesMulti)(args...; kwargs...)
-    data = mcm.arr(args...; kwargs...)
-    data isa MCSamples ? data : MCSamplesMulti(data)
-end
+nrandom(mcm::MCSamplesMulti) = nrandom(first(mcm))
+#         @assert allequal(nrandom.(arr))
 
 sampletype(::Type{<:MCSamples{T}}) where {T} = T
-sampletype(::Type{<:MCSamplesMulti{A}}) where {A} = sampletype(eltype(A))
+sampletype(::Type{<:MCSamplesMulti{A}}) where {A} = sampletype(A)
 sampletype(mc::Union{<:MCSamples, <:MCSamplesMulti}) = sampletype(typeof(mc))
 Accessors.set(mc::MCSamples, ::typeof(sampletype), ::Type{T}) where {T} = MCSamples(convert(T, mc.real), convert.(T, mc.random))
-Accessors.set(mc::MCSamplesMulti, ::typeof(sampletype), ::Type{T}) where {T} = @set mc.arr |> Elements() |> sampletype = T
+Accessors.set(mc::MCSamplesMulti, ::typeof(sampletype), ::Type{T}) where {T} = @set mc |> Elements() |> sampletype = T
 
 
 """    mapsamples(f, mc::Union{MCSamples,MCSamplesMulti} [; mapfunc=map])
@@ -171,14 +145,12 @@ function mapsamples(f, mcs::MCSamples; mapfunc=map)
 end
 
 function mapsamples(f, mcm::MCSamplesMulti; mapfunc=map)
-    return MCSamplesMulti(
-        map(mcm.arr) do mc
-            mapsamples(f, mc; mapfunc)
-        end
-    )
+    return map(mcm) do mc
+        mapsamples(f, mc; mapfunc)
+    end
 end
 
-function map_whole_realizations(f, mcs)
+function map_whole_realizations(f, mcs::MCSamplesMulti)
     return MCSamples(
         real=f(mapview(realval, mcs)),
         random=map(1:nrandom(mcs)) do i
@@ -196,26 +168,22 @@ Applies `f(sample, param)` to each combination of existing samples (both real an
 `mapfunc` argument can be used for parallelization: eg, `mapfunc = ThreadsX.map`.
 """
 function map_w_params(f, mcs::MCSamples, params; mapfunc=map)
-    return MCSamplesMulti(
-        map(params) do pars
-            mapsamples(mcs; mapfunc) do sample
-                f(sample, pars)
-            end
+    return map(params) do pars
+        mapsamples(mcs; mapfunc) do sample
+            f(sample, pars)
         end
-    )
+    end
 end
 
 function map_w_params(f, mcm::MCSamplesMulti, params; mapfunc=map)
-    prev_grid = grid(; named_axiskeys(mcm.arr)...)
-    return MCSamplesMulti(
-        map(prev_grid, mcm.arr) do prev_pars, mc
-            map(params) do pars
-                mapsamples(mc; mapfunc) do sample
-                    f(sample, merge(prev_pars, pars))
-                end
+    prev_grid = grid(; named_axiskeys(mcm)...)
+    return map(prev_grid, mcm) do prev_pars, mc
+        map(params) do pars
+            mapsamples(mc; mapfunc) do sample
+                f(sample, merge(prev_pars, pars))
             end
-        end |> stack
-    )
+        end
+    end |> stack
 end
 
 function map_w_params(f, mcs::MCSamples; mapfunc=map)
@@ -224,29 +192,27 @@ function map_w_params(f, mcs::MCSamples; mapfunc=map)
     end
     axks = named_axiskeys(realval(mc_tmp))
     @assert all(A -> named_axiskeys(A) == axks, randomvals(mc_tmp))
-    MCSamplesMulti(map(grid(;axks...)) do pars
+    map(grid(;axks...)) do pars
         mapsamples(mc_tmp) do ss
             ss(;pars...)
         end
-    end)
+    end
 end
 
 function map_w_params(f, mcm::MCSamplesMulti; mapfunc=map)
-    prev_grid = grid(; named_axiskeys(mcm.arr)...)
-    return MCSamplesMulti(
-        map(prev_grid, mcm.arr) do prev_pars, mc
-            mc_tmp = mapsamples(mc; mapfunc) do sample
-                f(sample, prev_pars)
+    prev_grid = grid(; named_axiskeys(mcm)...)
+    return map(prev_grid, mcm) do prev_pars, mc
+        mc_tmp = mapsamples(mc; mapfunc) do sample
+            f(sample, prev_pars)
+        end
+        axks = named_axiskeys(realval(mc_tmp))
+        @assert all(A -> named_axiskeys(A) == axks, randomvals(mc_tmp))
+        map(grid(;axks...)) do pars
+            mapsamples(mc_tmp) do ss
+                ss(;pars...)
             end
-            axks = named_axiskeys(realval(mc_tmp))
-            @assert all(A -> named_axiskeys(A) == axks, randomvals(mc_tmp))
-            map(grid(;axks...)) do pars
-                mapsamples(mc_tmp) do ss
-                    ss(;pars...)
-                end
-            end
-        end |> stack
-    )
+        end
+    end |> stack
 end
 
 """    swap_realval(mc, randix::Int)
@@ -340,9 +306,9 @@ function pvalues_all(mc::MCSamples, mode::Type{Fraction}=Fraction; alt)
 end
 
 function pvalues_all(mcm::MCSamplesMulti, mode=Fraction; alt)
-    MCSamplesMulti(map(mcm.arr) do mc
+    map(mcm) do mc
         pvalues_all(mc, mode; alt)
-    end)
+    end
 end
 
 """    pvalue_post(mc::MCSamplesMulti; alt, combine=minimum)
