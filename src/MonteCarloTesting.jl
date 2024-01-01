@@ -22,6 +22,8 @@ struct PValue
     p::Float64
 end
 
+(::Type{T})(pv::PValue) where {T<:AbstractFloat} = T(pv.p)
+
 # signatures must be less specific than in DistributionsExt
 # otherwise - method overwritten warnings
 nσ(p) = error("Load Distributions")
