@@ -60,6 +60,7 @@ Base.@kwdef struct MCSamples{T, AT <: AbstractArray{T}}
     real::T
     random::AT
 end
+MCSamples{T}(; real, random) where {T} = MCSamples{T, typeof(random)}(real, random)
 
 "    realval(mc::MCSamples{T})::T
 The real value of `MCSamples`. "
@@ -93,11 +94,11 @@ Reproduceability in the latter case is ensured by creating an array of copied an
 function montecarlo(; real, random=nothing, randomfunc=nothing, nrandom=nothing, rng=Random.default_rng())
     @assert !isnothing(random) != (!isnothing(randomfunc) && !isnothing(nrandom))
     if !isnothing(random)
-        MCSamples(; real, random)
+        MCSamples{typeof(real)}(; real, random)
     else
         check_randomfunc(randomfunc, copy(rng))
         rngs = map(seed -> Random.seed!(copy(rng), seed), rand(rng, UInt, nrandom))
-        MCSamples(; real, random=mapview(rng -> randomfunc(copy(rng)), rngs))
+        MCSamples{typeof(real)}(; real, random=mapview(rng -> randomfunc(copy(rng)), rngs))
     end
 end
 

@@ -9,7 +9,7 @@ using Distributions: Poisson
 using Test
 
 @testset "basic hardcoded" begin
-    mc = montecarlo(real=0, random=[-1, 0, 0, 0, 0, 0, 0, 1, 1])
+    mc = @inferred montecarlo(real=0, random=[-1, 0, 0, 0, 0, 0, 0, 1, 1])
     @test sampletype(mc) == Int
     @test realval(mc) == 0
     @test nrandom(mc) == 9
@@ -57,6 +57,8 @@ using Test
     @test realval.(mc2)(a=1) == 1
     @test realval.(mc2(a=0:2)) == [0, 1, 2]
     @test realval(mc2(a=1)) == 1
+
+    @test_throws TypeError montecarlo(real=1, random=Any[2, 3, 4])
 end
 
 @testset "PValue" begin
@@ -68,12 +70,13 @@ end
 end
 
 @testset "randomization" begin
-    mc1 = montecarlo(
+    mc1 = @inferred montecarlo(
         real=0.,
         randomfunc=rng -> rand(rng),
         nrandom=1000,
         rng=StableRNG(123),
     )
+    @test sampletype(mc1) === Float64
     @test collect(randomvals(mc1)) == collect(randomvals(mc1))  # repeatable
     @test allunique(randomvals(mc1))
     @test sum(randomvals(mc1)) ≈ 489.158  rtol=1e-4
@@ -101,13 +104,13 @@ end
 end
 
 @testset "common usage" begin
-    mc1 = montecarlo(
+    mc1 = @inferred montecarlo(
         real=range(0.5, 0.6, length=100) |> collect,
         randomfunc=rng -> rand(rng, 100),
         nrandom=1000,
         rng=StableRNG(123),
     )
-    @test sampletype(mc1) == Vector{Float64}
+    @test sampletype(mc1) === Vector{Float64}
     @test nrandom(mc1) == 1000
     @test collect(randomvals(mc1)) == collect(randomvals(mc1))  # repeatable
 
