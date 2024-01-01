@@ -1,4 +1,7 @@
 using MonteCarloTesting
+using IntervalSets
+using Accessors
+using AccessorsExtra
 using Statistics: mean
 using StableRNGs
 using RectiGrids
@@ -7,18 +10,41 @@ using Distributions: Poisson
 using Test
 
 @testset "basic hardcoded" begin
-    mc = montecarlo(real=0, random=[-1, 0, 0, 0, 0, 0, 0, 1, 1])
+    mc = @inferred montecarlo(real=0, random=[-1, 0, 0, 0, 0, 0, 0, 1, 1])
     @test sampletype(mc) == Int
     @test realval(mc) == 0
     @test nrandom(mc) == 9
     @test randomvals(mc) == [-1, 0, 0, 0, 0, 0, 0, 1, 1]
     @test realrandomvals(mc) == [0, -1, 0, 0, 0, 0, 0, 0, 1, 1]
 
-    @test realval(swap_realval(mc, 1)) == -1
-    @test randomvals(swap_realval(mc, 1)) == [0, 0, 0, 0, 0, 0, 0, 1, 1]
+    let sw = swap_realval(mc, 1)
+        @test realval(sw) == -1
+        @test randomvals(sw) == [0, 0, 0, 0, 0, 0, 0, 1, 1]
+        @test modify(reverse, mc, @optic₊ (realval(_), randomvals(_)[1])) == sw
+    end
 
     @test pvalue(mc; alt= >=) == 0.9
     @test pvalue(mc; alt= <=) == 0.8
+    @test pvalue_mcinterval(mc; alt= >=) == 0.5577894550965302..0.9806720833650083
+
+    Accessors.test_getset_laws(sampletype, mc, Float64, Int)
+    Accessors.test_getset_laws(realval, mc, 5, 2)
+    Accessors.test_getset_laws(first ∘ randomvals, mc, 1, 2)
+
+    let mcf = @set sampletype(mc) = Float64
+
+        @test pvalue(@set(realval(mcf) = -0.1); alt= >=) == 0.9
+        @test pvalue(@set(realval(mcf) = 0.1); alt= >=) == 0.3
+        @test pvalue(@set(realval(mcf) = -0.1); alt= <=) == 0.2
+        @test pvalue(@set(realval(mcf) = 0.1); alt= <=) == 0.8
+
+        @test pvalue_tiesinterval(mc; alt = >=) == 0.3..0.9
+        @test pvalue_tiesinterval(mc; alt = <=) == 0.2..0.8
+
+        @test pvalue_tiesinterval(@set(realval(mcf) = -0.1); alt = >=) == 0.9..0.9
+        @test pvalue_tiesinterval(@set(realval(mcf) = 0.1); alt = >=) == 0.3..0.3
+    end
+
     @test realval(pvalues_all(mc; alt= >=)) == 0.9
     @test realval(pvalues_all(mc; alt= <=)) == 0.8
     @test randomvals(pvalues_all(mc; alt= >=)) == [1.0, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.2, 0.2]
@@ -35,15 +61,28 @@ using Test
     @test realval.(mc2)(a=1) == 1
     @test realval.(mc2(a=0:2)) == [0, 1, 2]
     @test realval(mc2(a=1)) == 1
+
+    Accessors.test_getset_laws(sampletype, mc2, Float64, Int)
+
+    @test_throws TypeError montecarlo(real=1, random=Any[2, 3, 4])
+end
+
+@testset "PValue" begin
+    @test sprint(show, PValue(0.1234)) == "1.2e-1 (1.5σ)"
+    @test sprint(show, PValue(1.234e-5)) == "1.2e-5 (4.4σ)"
+
+    mc = montecarlo(real=0, random=[-1, 0, 0, 0, 0, 0, 0, 1, 1])
+    @test PValue(pvalue(mc; alt= >=)) == pvalue(PValue, mc; alt= >=)
 end
 
 @testset "randomization" begin
-    mc1 = montecarlo(
+    mc1 = @inferred montecarlo(
         real=0.,
         randomfunc=rng -> rand(rng),
         nrandom=1000,
         rng=StableRNG(123),
     )
+    @test sampletype(mc1) === Float64
     @test collect(randomvals(mc1)) == collect(randomvals(mc1))  # repeatable
     @test allunique(randomvals(mc1))
     @test sum(randomvals(mc1)) ≈ 489.158  rtol=1e-4
@@ -71,13 +110,13 @@ end
 end
 
 @testset "common usage" begin
-    mc1 = montecarlo(
+    mc1 = @inferred montecarlo(
         real=range(0.5, 0.6, length=100) |> collect,
         randomfunc=rng -> rand(rng, 100),
         nrandom=1000,
         rng=StableRNG(123),
     )
-    @test sampletype(mc1) == Vector{Float64}
+    @test sampletype(mc1) === Vector{Float64}
     @test nrandom(mc1) == 1000
     @test collect(randomvals(mc1)) == collect(randomvals(mc1))  # repeatable
 
@@ -91,6 +130,14 @@ end
     @test pvalue(mc2, alt= >=) == pvalue(mc2, Fraction, alt= >=)
     @test pvalue(swap_realval(mc2, 4), alt= >=) ≈ 0.513486  rtol=1e-4
     @test pvalue(swap_realval(mc2, 4), alt= >=) == randomvals(pvalues_all(mc2; alt= >=))[4]
+
+    for alt in [>=, <=]
+        int = pvalue_mcinterval(mc2; alt)
+        p = pvalue(mc2; alt)
+        @test p ∈ int
+        @test p ≈ mean(int)  rtol=0.1
+        @test width(int) ≈ 0.025  rtol=0.1
+    end
 
     mc3 = map_w_params(mc1, grid(n=10:100)) do xs, ps
         mean(xs[1:ps.n])
