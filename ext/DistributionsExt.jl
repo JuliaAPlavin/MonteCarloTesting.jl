@@ -10,6 +10,8 @@ function MonteCarloTesting.pvalue(mc::MonteCarloTesting.MCSamples, mode::Type{Po
            @assert false
 end
 
+# signatures must be more specific than in MonteCarloTesting itself
+# otherwise - method overwritten warnings
 MonteCarloTesting.nσ(p::PValue) = quantile(Normal(0, 1), 1-p.p/2)
 MonteCarloTesting._nσ_str(p::PValue) = "$(round(MonteCarloTesting.nσ(p), digits=1))σ"
 

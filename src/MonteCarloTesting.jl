@@ -21,8 +21,10 @@ struct PValue
     p::Float64
 end
 
-nσ(p::PValue) = error("Load Distributions")
-_nσ_str(p::PValue) = "XXσ"
+# signatures must be less specific than in DistributionsExt
+# otherwise - method overwritten warnings
+nσ(p) = error("Load Distributions")
+_nσ_str(p) = "XXσ"
 
 function Base.show(io::IO, p::PValue)
     # print(io, lpad(round(100*p.p, sigdigits=2), 5), "%")
