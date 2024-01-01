@@ -1,6 +1,7 @@
 using MonteCarloTesting
 using IntervalSets
 using Accessors
+using AccessorsExtra
 using Statistics: mean
 using StableRNGs
 using RectiGrids
@@ -16,8 +17,11 @@ using Test
     @test randomvals(mc) == [-1, 0, 0, 0, 0, 0, 0, 1, 1]
     @test realrandomvals(mc) == [0, -1, 0, 0, 0, 0, 0, 0, 1, 1]
 
-    @test realval(swap_realval(mc, 1)) == -1
-    @test randomvals(swap_realval(mc, 1)) == [0, 0, 0, 0, 0, 0, 0, 1, 1]
+    let sw = swap_realval(mc, 1)
+        @test realval(sw) == -1
+        @test randomvals(sw) == [0, 0, 0, 0, 0, 0, 0, 1, 1]
+        @test modify(reverse, mc, @optic₊ (realval(_), randomvals(_)[1])) == sw
+    end
 
     @test pvalue(mc; alt= >=) == 0.9
     @test pvalue(mc; alt= <=) == 0.8
