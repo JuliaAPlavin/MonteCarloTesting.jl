@@ -2,7 +2,6 @@ module MonteCarloTesting
 
 using Requires
 using RectiGrids
-using Statistics: mean
 using FlexiMaps: mapview
 using StatsBase: competerank
 using AxisKeys
