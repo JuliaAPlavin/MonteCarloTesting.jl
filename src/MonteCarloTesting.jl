@@ -159,6 +159,9 @@ The direction of the alternative hypothesis is speicifed by the `alt` parameter:
 function pvalue end
 
 pvalue(::Type{PValue}, args...; kwargs...) = PValue(pvalue(args...; kwargs...))
+for f in (:pvalue_mcinterval, :pvalue_tiesinterval)
+    @eval $f(::Type{PValue}, args...; kwargs...) = modify(PValue, $f(args...; kwargs...), Properties())
+end
 
 function pvalue(mc::MCSamples, mode::Type{Fraction}=Fraction; alt=alt(mc))
     @assert sampletype(mc) <: Real

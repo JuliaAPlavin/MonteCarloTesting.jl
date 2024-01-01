@@ -88,7 +88,9 @@ end
     @test sprint(show, PValue(1.234e-5)) == "1.2e-5 (4.4σ)"
 
     mc = montecarlo(real=0, random=[-1, 0, 0, 0, 0, 0, 0, 1, 1])
-    @test PValue(pvalue(mc; alt= >=)) == pvalue(PValue, mc; alt= >=)
+    @test sprint(show, pvalue(PValue, mc; alt= >=)) == "9.0e-1 (0.1σ)"
+    @test sprint(show, pvalue_mcinterval(PValue, mc; alt= >=)) == "5.6e-1 (0.6σ)..9.8e-1 (0.0σ)"
+    @test sprint(show, pvalue_tiesinterval(PValue, mc; alt= >=)) == "3.0e-1 (1.0σ)..9.0e-1 (0.1σ)"
 end
 
 @testset "randomization" begin
