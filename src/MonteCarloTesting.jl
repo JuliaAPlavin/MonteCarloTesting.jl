@@ -6,6 +6,7 @@ using IntervalSets
 using Accessors
 import Random
 using Printf
+import StatsAPI: pvalue
 
 export
     montecarlo,
