@@ -5,7 +5,6 @@ version = "0.1.15"
 
 [deps]
 Accessors = "7d9f7c33-5ae7-4f3b-8dc6-eff91059b697"
-AxisKeys = "94b1ba4f-4ee9-5380-92f1-94cde586c3c5"
 ConstructionBaseExtras = "914cd950-b775-4282-9f32-54fc4544c321"
 FlexiMaps = "6394faf6-06db-4fa8-b750-35ccc60383f7"
 InteractiveUtils = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
@@ -13,14 +12,16 @@ IntervalSets = "8197267c-284f-5f27-9208-e0e47529a953"
 Markdown = "d6f4376e-aef5-505a-96c1-9c027394607a"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
-RectiGrids = "8ac6971d-971d-971d-971d-971d5ab1a71a"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 
 [weakdeps]
+AxisKeys = "94b1ba4f-4ee9-5380-92f1-94cde586c3c5"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
+RectiGrids = "8ac6971d-971d-971d-971d-971d5ab1a71a"
 
 [extensions]
 DistributionsExt = "Distributions"
+RectiGridsExt = ["AxisKeys", "RectiGrids"]
 
 [compat]
 Accessors = "0.1.26"
