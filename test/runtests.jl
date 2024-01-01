@@ -58,6 +58,8 @@ using Test
     @test realval.(mc2(a=0:2)) == [0, 1, 2]
     @test realval(mc2(a=1)) == 1
 
+    Accessors.test_getset_laws(sampletype, mc2, Float64, Int)
+
     @test_throws TypeError montecarlo(real=1, random=Any[2, 3, 4])
 end
 

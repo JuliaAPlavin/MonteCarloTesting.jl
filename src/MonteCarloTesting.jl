@@ -64,8 +64,7 @@ MCSamples{T}(; real, random) where {T} = MCSamples{T, typeof(random)}(real, rand
 
 "    realval(mc::MCSamples{T})::T
 The real value of `MCSamples`. "
-realval(mc::MCSamples) = mc.real
-Accessors.set(mc::MCSamples, ::typeof(realval), v) = @set mc.real = v
+@accessor realval(mc::MCSamples) = mc.real
 
 "    nrandom(mc::MCSamples)::Int
 Number of random realizations within an `MCSamples` object, or within each of the same-sized `MCSamples` in a container. "
@@ -73,8 +72,7 @@ nrandom(mc::MCSamples) = length(randomvals(mc))
 
 "    randomvals(mc::MCSamples{T})::AbstractVector{T}
 Array of random realizations in `MCSamples`. Can be eager or lazily computed. "
-randomvals(mc::MCSamples) = mc.random
-Accessors.set(mc::MCSamples, ::typeof(randomvals), v) = @set mc.random = v
+@accessor randomvals(mc::MCSamples) = mc.random
 
 "    realrandomvals(mc::MCSamples{T})::AbstractVector{T}
 Array containing both the real value and random realizations from `MCSamples`. "
@@ -131,6 +129,8 @@ struct MCSamplesMulti{A <: KeyedArray{<:MCSamples}}
     end
 end
 
+Base.:(==)(a::MCSamplesMulti, b::MCSamplesMulti) = a.arr == b.arr
+
 nrandom(mcm::MCSamplesMulti) = nrandom(first(mcm.arr))
 
 Base.iterate(mcm::MCSamplesMulti, args...) = iterate(mcm.arr, args...)
@@ -155,6 +155,7 @@ sampletype(::Type{<:MCSamples{T}}) where {T} = T
 sampletype(::Type{<:MCSamplesMulti{A}}) where {A} = sampletype(eltype(A))
 sampletype(mc::Union{<:MCSamples, <:MCSamplesMulti}) = sampletype(typeof(mc))
 Accessors.set(mc::MCSamples, ::typeof(sampletype), ::Type{T}) where {T} = MCSamples(convert(T, mc.real), convert.(T, mc.random))
+Accessors.set(mc::MCSamplesMulti, ::typeof(sampletype), ::Type{T}) where {T} = @set mc.arr |> Elements() |> sampletype = T
 
 
 """    mapsamples(f, mc::Union{MCSamples,MCSamplesMulti} [; mapfunc=map])
