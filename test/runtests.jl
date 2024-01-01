@@ -1,15 +1,13 @@
-using MonteCarloTesting
-using IntervalSets
-using Accessors
-using AccessorsExtra
-using Statistics: mean
-using StableRNGs
-using RectiGrids
-using AxisKeys
-using Distributions: Poisson
-using Test
+using TestItems
+using TestItemRunner
+@run_package_tests
 
-@testset "basic hardcoded" begin
+
+@testitem "basic hardcoded" begin
+    using AccessorsExtra
+    using RectiGrids
+    using IntervalSets
+
     mc = @inferred montecarlo(real=0, random=[-1, 0, 0, 0, 0, 0, 0, 1, 1])
     @test sampletype(mc) == Int
     @test realval(mc) == 0
@@ -94,17 +92,21 @@ using Test
     @test_throws TypeError montecarlo(real=1, random=Any[2, 3, 4])
 end
 
-@testset "PValue" begin
+@testitem "PValue" begin
+    import Distributions  # for extension
+
     @test sprint(show, PValue(0.1234)) == "1.2e-1 (1.5σ)"
     @test sprint(show, PValue(1.234e-5)) == "1.2e-5 (4.4σ)"
 
     mc = montecarlo(real=0, random=[-1, 0, 0, 0, 0, 0, 0, 1, 1])
     @test sprint(show, pvalue(PValue, mc; alt= >=)) == "9.0e-1 (0.1σ)"
-    @test sprint(show, pvalue_mcinterval(PValue, mc; alt= >=)) == "5.6e-1 (0.6σ)..9.8e-1 (0.0σ)"
-    @test sprint(show, pvalue_tiesinterval(PValue, mc; alt= >=)) == "3.0e-1 (1.0σ)..9.0e-1 (0.1σ)"
+    @test sprint(show, pvalue_mcinterval(PValue, mc; alt= >=)) == "5.6e-1 (0.6σ) .. 9.8e-1 (0.0σ)"
+    @test sprint(show, pvalue_tiesinterval(PValue, mc; alt= >=)) == "3.0e-1 (1.0σ) .. 9.0e-1 (0.1σ)"
 end
 
-@testset "randomization" begin
+@testitem "randomization" begin
+    using StableRNGs
+
     mc1 = @inferred montecarlo(
         real=0.,
         randomfunc=rng -> rand(rng),
@@ -138,7 +140,12 @@ end
     @test_throws AssertionError montecarlo(real=0., randomfunc=rng -> (rand(rng); rand()), nrandom=100)
 end
 
-@testset "common usage" begin
+@testitem "common usage" begin
+    using IntervalSets
+    using RectiGrids
+    using StableRNGs
+    using Statistics: mean
+
     mc1 = @inferred montecarlo(
         real=range(0.5, 0.6, length=100) |> collect,
         randomfunc=rng -> rand(rng, 100),
@@ -193,7 +200,10 @@ end
     @test pvalue_post(mc5(n= >=(90)); alt= >=) ≈ 0.060939  rtol=1e-4
 end
 
-@testset "different pvalues" begin
+@testitem "different pvalues" begin
+    using StableRNGs
+    using Distributions: Poisson
+
     mcp = montecarlo(real=10, random=rand(StableRNG(123), Poisson(4), 1000))
     @test pvalue(mcp, alt= >=) ≈ 0.008991  rtol=1e-4
     @test pvalue(mcp, alt= <=) ≈ 0.997002  rtol=1e-4
@@ -202,10 +212,11 @@ end
 end
 
 
-import Aqua
-import CompatHelperLocal as CHL
-@testset begin
+@testitem "_" begin
+    import Aqua
+    import CompatHelperLocal as CHL
+
     CHL.@check()
-    Aqua.test_all(MonteCarloTesting, ambiguities=false, project_toml_formatting=false)
+    Aqua.test_all(MonteCarloTesting, ambiguities=false)
     Aqua.test_ambiguities(MonteCarloTesting, recursive=false)
 end
