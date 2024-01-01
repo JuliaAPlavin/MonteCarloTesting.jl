@@ -4,7 +4,6 @@ using FlexiMaps: mapview
 using StatsBase: competerank
 using IntervalSets
 using Accessors
-using ConstructionBaseExtras  # for IntervalSets
 import Random
 using Printf
 
