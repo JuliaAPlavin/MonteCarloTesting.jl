@@ -26,6 +26,14 @@ using Test
     @test pvalue(mc; alt= >=) == 0.9
     @test pvalue(mc; alt= <=) == 0.8
     @test pvalue_mcinterval(mc; alt= >=) == 0.5577894550965302..0.9806720833650083
+    @test_throws "No alternative" pvalue(mc)
+
+    let mca = @set alt(mc) = >=
+        @test pvalue(mca) == 0.9
+        @test pvalue(mca; alt = >=) == 0.9
+        @test pvalue(mca; alt = <=) == 0.8
+        @test pvalue_mcinterval(mca) == 0.5577894550965302..0.9806720833650083
+    end
 
     Accessors.test_getset_laws(sampletype, mc, Float64, Int)
     Accessors.test_getset_laws(realval, mc, 5, 2)
@@ -61,8 +69,16 @@ using Test
     @test realval.(mc2)(a=1) == 1
     @test realval.(mc2(a=0:2)) == [0, 1, 2]
     @test realval(mc2(a=1)) == 1
+    @test pvalue.(mc2; alt = >=)::KeyedArray == KeyedArray([0.9, 0.9, 0.9, 0.9], a=-1:2)
 
     Accessors.test_getset_laws(sampletype, mc2, Float64, Int)
+
+    let mc2a = @set alt(mc2) = >=
+        @test pvalue.(mc2a)::KeyedArray == KeyedArray([0.9, 0.9, 0.9, 0.9], a=-1:2)
+        @test pvalue.(mc2a; alt = >=) == KeyedArray([0.9, 0.9, 0.9, 0.9], a=-1:2)
+        @test pvalue.(mc2a; alt = <=) == KeyedArray([0.8, 0.8, 0.8, 0.8], a=-1:2)
+        @test pvalue_mcinterval.(mc2a)[1] == 0.5577894550965302..0.9806720833650083
+    end
 
     @test_throws TypeError montecarlo(real=1, random=Any[2, 3, 4])
 end

@@ -11,6 +11,7 @@ using Printf
 export
     montecarlo,
     realval, randomvals, realrandomvals, nrandom, sampletype,
+    alt,
     PValue,
     Fraction, pvalue, pvalues_all, pvalue_post,
     pvalue_tiesinterval, pvalue_mcinterval,
@@ -33,13 +34,21 @@ function Base.show(io::IO, p::PValue)
     print(io, " (", _nσ_str(p), ")")
 end
 
+struct _NoAlt end
+(::_NoAlt)(args...) = error("No alternative hypothesis specified. Use `@set alt(mc) = ...`, or provide the `alt` argument to p-value function.")
 
 """ Stores the real/actual/true value together with its Monte-Carlo realizations. """
-Base.@kwdef struct MCSamples{T, AT <: AbstractArray{T}}
+struct MCSamples{T, AT <: AbstractArray{T}, ALT}
     real::T
     random::AT
+    alt::ALT
 end
-MCSamples{T}(; real, random) where {T} = MCSamples{T, typeof(random)}(real, random)
+MCSamples{T, AT}(real, random) where {T, AT}= MCSamples{T, AT, _NoAlt}(real, random, _NoAlt())
+MCSamples{T}(real, random) where {T} = MCSamples{T, typeof(random)}(real, random)
+MCSamples{T}(; real, random) where {T} = MCSamples{T}(real, random)
+MCSamples(; real, random) = MCSamples(real, random, _NoAlt())
+
+@accessor alt(mc::MCSamples) = mc.alt
 
 "    realval(mc::MCSamples{T})::T
 The real value of `MCSamples`. "
@@ -102,7 +111,7 @@ end
 
 sampletype(::Type{<:MCSamples{T}}) where {T} = T
 sampletype(mc::MCSamples) = sampletype(typeof(mc))
-Accessors.set(mc::MCSamples, ::typeof(sampletype), ::Type{T}) where {T} = MCSamples(convert(T, mc.real), convert.(T, mc.random))
+Accessors.set(mc::MCSamples, ::typeof(sampletype), ::Type{T}) where {T} = MCSamples{T}(convert(T, mc.real), convert.(T, mc.random))
 
 
 """    mapsamples(f, mc::Union{MCSamples,MCSamplesMulti} [; mapfunc=map])
@@ -151,7 +160,7 @@ function pvalue end
 
 pvalue(::Type{PValue}, args...; kwargs...) = PValue(pvalue(args...; kwargs...))
 
-function pvalue(mc::MCSamples, mode::Type{Fraction}=Fraction; alt)
+function pvalue(mc::MCSamples, mode::Type{Fraction}=Fraction; alt=alt(mc))
     @assert sampletype(mc) <: Real
     @assert alt(realval(mc), realval(mc))
     nalt = count(r -> alt(r, realval(mc)), randomvals(mc))
@@ -159,7 +168,7 @@ function pvalue(mc::MCSamples, mode::Type{Fraction}=Fraction; alt)
     return (nalt + 1) / (n + 1)
 end
 
-function pvalue_mcinterval(mc::MCSamples; alt, nσ=2)
+function pvalue_mcinterval(mc::MCSamples; alt=alt(mc), nσ=2)
     @assert sampletype(mc) <: Real
     @assert alt(realval(mc), realval(mc))
     nalt = count(r -> alt(r, realval(mc)), randomvals(mc))
@@ -167,7 +176,7 @@ function pvalue_mcinterval(mc::MCSamples; alt, nσ=2)
     return ci_wilson((; x=nalt, n=n); nσ)
 end
 
-function pvalue_tiesinterval(mc::MCSamples; alt)
+function pvalue_tiesinterval(mc::MCSamples; alt=alt(mc))
     @assert sampletype(mc) <: Real
     @assert alt(realval(mc), realval(mc))
     nalt = count(r -> alt(r, realval(mc)), randomvals(mc))
@@ -199,7 +208,7 @@ For MCSamplesMulti, maps over all parameters.
 
 See also `pvalue()` docs.
 """
-function pvalues_all(mc::MCSamples, mode::Type{Fraction}=Fraction; alt)
+function pvalues_all(mc::MCSamples, mode::Type{Fraction}=Fraction; alt=alt(mc))
     @assert sampletype(mc) <: Real
     @assert alt(realval(mc), realval(mc))
     ranks = competerank(realrandomvals(mc); lt=!alt)

@@ -5,7 +5,7 @@ using AxisKeys
 using RectiGrids
 using MonteCarloTesting
 import MonteCarloTesting:
-    MCSamples, nrandom, sampletype,
+    MCSamples, nrandom, sampletype, alt,
     mapsamples, map_w_params, map_whole_realizations,
     pvalues_all, pvalue_post
 
@@ -19,6 +19,8 @@ sampletype(::Type{<:MCSamplesMulti{A}}) where {A} = sampletype(A)
 sampletype(mc::MCSamplesMulti) = sampletype(eltype(mc))
 Accessors.set(mc::MCSamplesMulti, ::typeof(sampletype), ::Type{T}) where {T} = @set mc |> Elements() |> sampletype = T
 
+alt(mcm::MCSamplesMulti) = alt(first(mcm))
+Accessors.set(mcm::MCSamplesMulti, ::typeof(alt), v) = @set mcm |> Elements() |> alt = v
 
 function mapsamples(f, mcm::MCSamplesMulti; mapfunc=map)
     return map(mcm) do mc
@@ -91,7 +93,7 @@ function map_w_params(f, mcm::MCSamplesMulti; mapfunc=map)
     end |> stack
 end
 
-function pvalues_all(mcm::MCSamplesMulti, mode=Fraction; alt)
+function pvalues_all(mcm::MCSamplesMulti, mode=Fraction; alt=alt(mc))
     map(mcm) do mc
         pvalues_all(mc, mode; alt)
     end
@@ -104,7 +106,7 @@ Compute the so-called _post-trial_ p-value. That's an estimate of the probabilit
 `alt`: specification of the alternative hypothesis, passed as-is to `pvalue()`.
 `combine`: experimental.
 """
-function pvalue_post(mcm::MCSamplesMulti; alt, combine=minimum)
+function pvalue_post(mcm::MCSamplesMulti; alt=alt(mc), combine=minimum)
     # pvalue for each realization and parameter value:
     ps_all = pvalues_all(mcm; alt)
     # test statistics for each realization:

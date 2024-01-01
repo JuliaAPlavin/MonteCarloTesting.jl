@@ -2,7 +2,7 @@ module DistributionsExt
 using MonteCarloTesting
 using Distributions: fit, cdf, ccdf, quantile, Poisson, Normal
 
-function MonteCarloTesting.pvalue(mc::MonteCarloTesting.MCSamples, mode::Type{Poisson}; alt)
+function MonteCarloTesting.pvalue(mc::MonteCarloTesting.MCSamples, mode::Type{Poisson}; alt=alt(mc))
     @assert sampletype(mc) <: Real
     dist = fit(Poisson, randomvals(mc))
     return alt == (>=) ? ccdf(dist, realval(mc) - 1) :
