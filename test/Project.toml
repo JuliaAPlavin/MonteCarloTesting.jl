@@ -13,7 +13,7 @@ TestItems = "1c621080-faea-4a02-84b6-bbd5e436b8fe"
 
 [compat]
 AccessorsExtra = "0.1.27"
-Aqua = "0.6"
+Aqua = "0.8"
 CompatHelperLocal = "0.1"
 Distributions = "0.25"
 IntervalSets = "0.7.3"
